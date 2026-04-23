@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Papers · Paper Trail</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="../assets/app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="breadcrumb"><a href="../">Home</a></p>
+        <p class="hero__eyebrow">GitHub Actions + GitHub Pages</p>
+        <h1>All tracked papers</h1>
+        <p>Browse paper pages by title, tag, venue, DOI, or arXiv identifier.</p>
+        <div class="stats"><span class="stat-pill">0 papers tracked</span></div>
+      </section>
+      <section class="panel controls">
+        <label class="section-label" for="search">Search papers</label>
+        <input
+          class="search-input"
+          id="search"
+          type="search"
+          data-search-input
+          placeholder="Filter by title, author, venue, DOI, arXiv, or tag"
+        >
+      </section>
+      <p class="empty-state" data-empty-message>Add your first paper through the GitHub issue form to populate this library.</p>
+      <section class="paper-list">
+        
+      </section>
+      <p class="footer">Generated from repository data. Edit the issue form, not the HTML.</p>
+    </main>
+  </body>
+</html>

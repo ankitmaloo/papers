@@ -1,0 +1,33 @@
+name: Add paper
+description: Submit a paper URL and let the repository ingest it into the site.
+title: "[paper] "
+labels:
+  - paper-submission
+body:
+  - type: input
+    id: paper_url
+    attributes:
+      label: Paper URL
+      description: A DOI, arXiv, publisher landing page, or other stable URL for the paper.
+      placeholder: https://arxiv.org/abs/1706.03762
+    validations:
+      required: true
+  - type: input
+    id: title_override
+    attributes:
+      label: Title override
+      description: Optional. Use this if the page does not expose good metadata.
+      placeholder: Attention Is All You Need
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Optional. Comma-separated tags for later filtering.
+      placeholder: transformers, llm, sequence-modeling
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Optional. Why this paper matters or how you found it.
+      placeholder: Mentions a stronger baseline than the last paper I read.
+

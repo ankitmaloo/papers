@@ -1,0 +1,150 @@
+name: Add paper
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+
+permissions:
+  contents: write
+  issues: write
+  pages: write
+  id-token: write
+
+jobs:
+  add-paper:
+    if: contains(github.event.issue.labels.*.name, 'paper-submission')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Sync environment
+        run: uv sync
+
+      - name: Ingest paper
+        id: ingest
+        continue-on-error: true
+        run: |
+          uv run python scripts/add_paper.py \
+            --event-path "$GITHUB_EVENT_PATH" \
+            --data-dir data \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Build site
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        run: uv run python scripts/build_site.py --data-dir data --site-dir site
+
+      - name: Validate generated site
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        run: uv run python -m unittest discover -s tests
+
+      - name: Commit paper changes
+        id: commit
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        env:
+          COMMIT_SUBJECT: ${{ steps.ingest.outputs.commit_subject }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/papers site
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "$COMMIT_SUBJECT"
+          git push
+          echo "committed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Configure Pages
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy Pages
+        id: deployment
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        uses: actions/deploy-pages@v4
+
+      - name: Comment on issue after failure
+        if: steps.ingest.outputs.status == 'failed'
+        uses: actions/github-script@v7
+        env:
+          FAILURE_MESSAGE: ${{ steps.ingest.outputs.message }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                "I couldn't add this paper automatically.",
+                "",
+                process.env.FAILURE_MESSAGE,
+                "",
+                "If the URL points straight to a PDF or an unsupported page, edit the issue and fill in **Title override**."
+              ].join("\n")
+            });
+
+      - name: Comment on issue after success
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated' || steps.ingest.outputs.status == 'unchanged'
+        uses: actions/github-script@v7
+        env:
+          STATUS: ${{ steps.ingest.outputs.status }}
+          PAPER_SLUG: ${{ steps.ingest.outputs.paper_slug }}
+          PAPER_TITLE: ${{ steps.ingest.outputs.paper_title }}
+          PAGE_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        with:
+          script: |
+            const owner = context.repo.owner.toLowerCase();
+            const repo = context.repo.repo;
+            const fallbackBase = repo.toLowerCase() === `${owner}.github.io`
+              ? `https://${owner}.github.io/`
+              : `https://${owner}.github.io/${repo}/`;
+            const baseUrl = process.env.PAGE_BASE_URL || fallbackBase;
+            const paperUrl = `${baseUrl.replace(/\/?$/, "/")}papers/${process.env.PAPER_SLUG}/`;
+            const verb = process.env.STATUS === "updated"
+              ? "updated"
+              : process.env.STATUS === "unchanged"
+                ? "was already up to date"
+                : "added";
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                `Paper ${verb}: **${process.env.PAPER_TITLE}**`,
+                "",
+                `Page: ${paperUrl}`
+              ].join("\n")
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: "closed"
+            });
+
+      - name: Fail workflow after ingest error
+        if: steps.ingest.outputs.status == 'failed'
+        run: exit 1

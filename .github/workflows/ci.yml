@@ -1,0 +1,37 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Sync environment
+        run: uv sync
+
+      - name: Run tests
+        run: uv run python -m unittest discover -s tests
+
+      - name: Build site
+        run: uv run python scripts/build_site.py --data-dir data --site-dir site
+
+      - name: Verify generated output is committed
+        run: git diff --exit-code -- site

@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+src/paper_trail/__init__.py
+src/paper_trail/ingest.py
+src/paper_trail/site.py
+src/paper_trail.egg-info/PKG-INFO
+src/paper_trail.egg-info/SOURCES.txt
+src/paper_trail.egg-info/dependency_links.txt
+src/paper_trail.egg-info/top_level.txt
+tests/test_ingest.py
+tests/test_site.py
