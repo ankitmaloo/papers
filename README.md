@@ -24,7 +24,7 @@ Paper Trail turns GitHub issues into a browsable paper library. Open an **Add pa
 1. Create a new GitHub repository from this folder and push it to `main`.
 2. In **Settings -> Actions -> General**, allow workflows to create and approve pull requests if your org policy requires it, and make sure the default `GITHUB_TOKEN` can write contents.
 3. In **Settings -> Pages**, set the source to **GitHub Actions**.
-4. Open the **Add paper** issue form, paste a paper URL, and submit it.
+4. Open the **Add paper** issue form, paste a paper URL, and submit it. No manual labeling is required.
 
 The workflow will:
 

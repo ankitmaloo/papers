@@ -1,8 +1,6 @@
 name: Add paper
 description: Submit a paper URL and let the repository ingest it into the site.
 title: "[paper] "
-labels:
-  - paper-submission
 body:
   - type: input
     id: paper_url
@@ -30,4 +28,3 @@ body:
       label: Notes
       description: Optional. Why this paper matters or how you found it.
       placeholder: Mentions a stronger baseline than the last paper I read.
-
