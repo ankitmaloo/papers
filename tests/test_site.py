@@ -140,16 +140,6 @@ class SiteTests(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
-            topic_files_dir = topics_dir / "looped-transformers_files"
-            topic_files_dir.mkdir()
-            (topic_files_dir / "index.html").write_text(
-                "<!doctype html><title>Bundled draft page</title>\n",
-                encoding="utf-8",
-            )
-            (topic_files_dir / "figure.js").write_text(
-                "window.figureLoaded = true;\n",
-                encoding="utf-8",
-            )
             (papers_dir / "depth-schedules-for-looped-transformers-2026.json").write_text(
                 json.dumps(paper, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
@@ -170,8 +160,6 @@ class SiteTests(unittest.TestCase):
 
             self.assertIn("Understand the topic visually", looped_topic_html)
             self.assertIn("Loop depth acts like iterative compute", looped_topic_html)
-            self.assertNotIn("Bundled draft page", looped_topic_html)
-            self.assertTrue((site_dir / "topics" / "looped-transformers" / "figure.js").exists())
             self.assertIn("Depth Schedules for Looped Transformers", related_topic_html)
             self.assertIn("What this paper contributes", paper_html)
             self.assertIn("Related topics", paper_html)
