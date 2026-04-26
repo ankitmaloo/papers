@@ -1227,12 +1227,19 @@ def build_site(data_dir: Path, site_dir: Path) -> None:
             render_topic_page(topic, topic_papers, explainer_html=explainer_html, explainer_css=explainer_css),
             encoding="utf-8",
         )
-        
-        # Copy extra files
+
+        # Copy topic support files without replacing the generated route page.
         extra_dir = data_dir / "topics" / f"{topic['slug']}_files"
         if extra_dir.exists():
             import shutil
-            shutil.copytree(extra_dir, topic_dir, dirs_exist_ok=True)
+            for source in extra_dir.iterdir():
+                if source.name == "index.html":
+                    continue
+                destination = topic_dir / source.name
+                if source.is_dir():
+                    shutil.copytree(source, destination, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(source, destination)
 
     for paper in papers:
         paper_dir = site_dir / "papers" / paper["slug"]
