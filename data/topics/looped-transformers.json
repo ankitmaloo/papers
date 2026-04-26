@@ -1,0 +1,32 @@
+{
+  "slug": "looped-transformers",
+  "title": "Looped Transformers",
+  "summary": "Scaling language models via implicit recurrent latent reasoning rather than token generation. This paradigm allows unrolling a block of transformer layers to arbitrary depth at test-time.",
+  "update_headline": "Parcae establishes scaling laws for stable looped training.",
+  "tags": ["Reasoning", "Recurrent", "Test-Time Compute", "Parameter Efficiency"],
+  "update_log": [
+    {
+      "added_at": "2026-04-20T10:00:00Z",
+      "paper_slug": "parcae-scaling",
+      "paper_title": "Parcae: Scaling Laws For Stable Looped Language Models",
+      "summary": "Demonstrated that negative diagonal parameterization prevents residual explosion in looped architectures."
+    },
+    {
+      "added_at": "2026-04-18T10:00:00Z",
+      "paper_slug": "ouro-scaling",
+      "paper_title": "Scaling Latent Reasoning via Looped Language Models",
+      "summary": "Scaled looped architectures to 7.7T tokens, proving viability against 12B parameter models."
+    }
+  ],
+  "key_takeaways": [
+    "Recurrent blocks converge to distinct fixed points in latent space.",
+    "Looping enables test-time compute scaling without text generation.",
+    "Spectral norm of injection parameters must be constrained for stability.",
+    "Hyper-connections can expand capacity without large parameter overhead."
+  ],
+  "open_questions": [
+    "How does looped reasoning scale to multi-modal data?",
+    "Can intermediate latent states be decoded to human-readable thought traces?"
+  ],
+  "paper_slugs": ["parcae-scaling", "ouro-scaling", "huginn-recurrent", "blayney-mechanistic", "hyperloop"]
+}

@@ -11,36 +11,23 @@
     <main class="shell">
       <section class="hero">
         <p class="breadcrumb"><a href="../">Home</a></p>
-        <p class="hero__eyebrow">GitHub Actions + GitHub Pages</p>
-        <h1>All tracked papers</h1>
-        <p>Browse paper pages by title, tag, venue, DOI, or arXiv identifier.</p>
-        <div class="stats"><span class="stat-pill">1 papers tracked</span><span class="stat-pill">1 tagged</span></div>
+        <p class="hero__eyebrow">Supporting source pages</p>
+        <h1>All papers</h1>
+        <p class="lead">These pages keep the paper-level metadata and explain how each source fits into a broader topic story.</p>
       </section>
       <section class="panel controls">
         <label class="section-label" for="search">Search papers</label>
-        <input
-          class="search-input"
-          id="search"
-          type="search"
-          data-search-input
-          placeholder="Filter by title, author, venue, DOI, arXiv, or tag"
-        >
+        <input id="search" class="search-input" type="search" data-search-input placeholder="Filter by paper, topic, tag, author, DOI, or delta">
       </section>
       <p class="empty-state" data-empty-message hidden>No papers match the current search.</p>
-      <section class="paper-list">
-        <article class="paper-card" data-paper-card data-search="parcae: scaling laws for stable looped language models prairie, hayden novack, zachary berg-kirkpatrick, taylor fu, daniel y. arxiv.org transformers llms looped transformers  2604.12946">
-      <p class="paper-card__eyebrow">April 14, 2026 · arXiv.org</p>
-      <h2><a href="../papers/parcae-scaling-laws-for-stable-looped-language-models-2026/">Parcae: Scaling Laws For Stable Looped Language Models</a></h2>
-      <p>Prairie, Hayden, Novack, Zachary, Berg-Kirkpatrick, Taylor, Fu, Daniel Y.</p>
-      <p>Added April 23, 2026</p>
-      <div class="tag-row"><span class="tag">transformers</span><span class="tag">llms</span><span class="tag">looped transformers</span></div>
-      <div class="button-row">
-        <a class="button button--primary" href="../papers/parcae-scaling-laws-for-stable-looped-language-models-2026/">Open page</a>
-        <a class="button" href="https://arxiv.org/abs/2604.12946" target="_blank" rel="noreferrer">Source paper</a>
-      </div>
-    </article>
+      <section class="paper-grid">
+        <article class="paper-card" data-search-card data-search="parcae: scaling laws for stable looped language models  prairie, hayden novack, zachary berg-kirkpatrick, taylor fu, daniel y. transformers llms looped transformers traditional fixed-depth architectures scale quality by increasing training flops, typically through increased parameterization, at the expense of a higher memory footprint, or data. a potential alternative is looped architectures, which instead increase flops by sending activations through a block of layers in a loop. while promising, existing recipes for training looped architectures can be unstable, suffering from residual explosion and loss spikes. we address these challenges by recasting looping as a nonlinear time-variant dynamical system over the residual stream. via a linear approximation to this system, we find that instability occurs in existing looped architectures as a result of large spectral norms in their injection parameters. to address these instability issues, we propose parcae, a novel stable, looped architecture that constrains the spectral norm of the injection parameters via discretization of a negative diagonal parameterization. as a result, parcae achieves up to 6.3% lower validation perplexity over prior large-scale looped models. using our stable looped architecture, we investigate the scaling properties of looping as a medium to improve quality by increasing flops in training and test-time. for training, we derive predictable power laws to scale flops while keeping parameter count fixed. our initial scaling laws suggest that looping and data should be increased in tandem, given a fixed flop budget. at test-time, we find that parcae can use looping to scale compute, following a predictable, saturating exponential decay. when scaled up to 1.3b parameters, we find that parcae improves core and core-extended quality by 2.99 and 1.18 points when compared to strong transformer baselines under a fixed parameter and data budget, achieving a relative quality of up to 87.5% a transformer twice the size.   2604.12946">
+              <p class="paper-card__meta">Topic still being evaluated</p>
+              <h3><a href="parcae-scaling-laws-for-stable-looped-language-models-2026/">Parcae: Scaling Laws For Stable Looped Language Models</a></h3>
+              <p>Traditional fixed-depth architectures scale quality by increasing training FLOPs, typically through increased parameterization, at the expense of a higher memory footp...</p>
+              <div class="tag-row"><span class="tag">transformers</span><span class="tag">llms</span><span class="tag">looped transformers</span></div>
+            </article>
       </section>
-      <p class="footer">Generated from repository data. Edit the issue form, not the HTML.</p>
     </main>
   </body>
 </html>

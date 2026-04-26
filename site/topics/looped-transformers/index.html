@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Looped Transformers - a live doc</title>
+  <link rel="stylesheet" href="style.css?v=20260425">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <span class="brand-title">Looped Transformers</span>
+      <span style="color:var(--ink-faint);margin-left:6px">· a live doc</span>
+    </div>
+    <div class="meta">
+      <span><span class="dot"></span>live · updated 24 Apr 2026</span>
+      <span class="pill">5 papers · 14 sections</span>
+      <span class="pill ver">v 0.4</span>
+    </div>
+  </div>
+
+  <div class="shell">
+    <aside class="rail">
+      <div class="rail-section">
+        <h4>Contents</h4>
+        <ul class="rail-toc">
+          <li class="active" data-sec="what"><span class="num">01</span><span style="flex:1">What is a looped transformer?</span></li>
+          <li data-sec="why"><span class="num">02</span><span style="flex:1">Why loop?</span></li>
+          <li data-sec="zoo"><span class="num">03</span><span style="flex:1">The architecture zoo</span><span class="new">new</span></li>
+          <li data-sec="mech"><span class="num">04</span><span style="flex:1">Mechanism: fixed points</span><span class="new">new</span></li>
+          <li data-sec="stages"><span class="num">05</span><span style="flex:1">Stages of inference</span></li>
+          <li data-sec="stability"><span class="num">06</span><span style="flex:1">Training stability</span><span class="new">new</span></li>
+          <li data-sec="ttc"><span class="num">07</span><span style="flex:1">Test-time compute</span></li>
+          <li data-sec="vs-cot"><span class="num">08</span><span style="flex:1">Latent vs chain-of-thought</span><span class="new">new</span></li>
+          <li data-sec="open"><span class="num">09</span><span style="flex:1">Open questions</span></li>
+          <li data-sec="deep-dives"><span class="num">10</span><span style="flex:1">Deep dives</span><span class="new">new</span></li>
+          <li data-sec="implications"><span class="num">11</span><span style="flex:1">Implications</span></li>
+          <li data-sec="glossary"><span class="num">12</span><span style="flex:1">Glossary</span></li>
+          <li data-sec="papers"><span class="num">13</span><span style="flex:1">Papers cited</span></li>
+          <li data-sec="changelog"><span class="num">14</span><span style="flex:1">Changelog</span></li>
+        </ul>
+      </div>
+
+      <div class="rail-section">
+        <h4>Research feed</h4>
+        <a class="rail-feed-item" href="#paper-hyperloop">
+          <div class="feed-meta"><span>2026 · MIT</span><span style="color:var(--accent)">NEW</span></div>
+          <div class="feed-title">Hyperloop Transformers - matrix residuals plus looping</div>
+        </a>
+        <a class="rail-feed-item" href="#paper-parcae">
+          <div class="feed-meta"><span>2026 · UCSD</span><span style="color:var(--accent)">NEW</span></div>
+          <div class="feed-title">Parcae - stable looping and scaling laws</div>
+        </a>
+        <a class="rail-feed-item" href="#paper-mech">
+          <div class="feed-meta"><span>2025 · Oxford</span></div>
+          <div class="feed-title">Mechanistic analysis of looped reasoning</div>
+        </a>
+        <a class="rail-feed-item" href="#paper-ouro">
+          <div class="feed-meta"><span>2025 · ByteDance</span></div>
+          <div class="feed-title">Ouro - learned exits, 7.7T tokens</div>
+        </a>
+        <a class="rail-feed-item" href="#paper-huginn">
+          <div class="feed-meta"><span>2025 · UMD</span></div>
+          <div class="feed-title">Huginn - recurrent depth, latent reasoning</div>
+        </a>
+      </div>
+
+      <div class="rail-section" style="font-size:11.5px;color:var(--ink-faint);line-height:1.5">
+        <h4>About this doc</h4>
+        <p style="font-size:12px;color:var(--ink-muted);margin:0;line-height:1.5">
+          A living explainer on looped transformers. Spine = intuition. Open any <span style="font-family:var(--mono);color:var(--accent)">+</span> panel for depth.
+        </p>
+      </div>
+    </aside>
+
+    <main class="narrative">
+      <div class="hero">
+        <div class="eyebrow">
+          <span>Living explainer</span><span class="sep"></span>
+          <span>v 0.4 · 2026-04-24</span><span class="sep"></span>
+          <span style="color:var(--accent)">5 source papers</span>
+        </div>
+        <h1 class="title">What if a transformer <em>kept thinking</em><br>before it spoke?</h1>
+        <p class="hero-deck">
+          Looped transformers re-apply the same block of layers many times before producing a token.
+          It is a way to spend more <em>compute</em> without spending more <em>parameters</em> - and a way
+          to reason in latent space rather than out loud.
+        </p>
+        <div class="hero-meta">
+          <div><b>Reading time</b>~22 min · spine only</div>
+          <div><b>Audience</b>knows transformers</div>
+          <div><b>Updates</b>every strong-fit paper</div>
+          <div><b>Format</b>two-pane · animated figures</div>
+        </div>
+        <div class="concept-map">
+          <h5><span>The spine</span><span>14 sections</span></h5>
+          <div class="concept-spine">
+            <a class="concept-node" href="#what"><span class="num">01</span><span class="lbl">What</span></a>
+            <a class="concept-node" href="#why"><span class="num">02</span><span class="lbl">Why</span></a>
+            <a class="concept-node" href="#zoo"><span class="num">03</span><span class="lbl">Zoo</span></a>
+            <a class="concept-node" href="#mech"><span class="num">04</span><span class="lbl">Mechanism</span></a>
+            <a class="concept-node" href="#stages"><span class="num">05</span><span class="lbl">Stages</span></a>
+            <a class="concept-node" href="#stability"><span class="num">06</span><span class="lbl">Stability</span></a>
+            <a class="concept-node" href="#ttc"><span class="num">07</span><span class="lbl">TTC</span></a>
+            <a class="concept-node" href="#vs-cot"><span class="num">08</span><span class="lbl">vs CoT</span></a>
+            <a class="concept-node" href="#open"><span class="num">09</span><span class="lbl">Open</span></a>
+            <a class="concept-node" href="#deep-dives"><span class="num">10</span><span class="lbl">Deep</span></a>
+            <a class="concept-node" href="#papers"><span class="num">13</span><span class="lbl">Papers</span></a>
+          </div>
+        </div>
+      </div>
+
+      <section id="what" class="sec">
+        <div class="sec-head"><span class="sec-num">01</span><h2>What is a looped transformer?</h2><span class="sec-tag gray">Intuition</span></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">
+          A normal transformer stacks <i>K</i> distinct blocks. A <b>looped transformer</b> applies a shared block <i>R</i> times.
+          Same parameters, more compute, and a residual stream that re-enters the same weights.
+        </div>
+        <p class="lede">
+          Picture the transformer as a tall building. In the ordinary version, every floor has its own interior and the elevator rides up once. A looped transformer is shorter, but the elevator goes through the same few floors several times before the doors open.
+        </p>
+        <p>
+          Concretely, a looped model has a short <b>prelude</b>, a shared <b>recurrent block</b>, and a short <b>coda</b>.
+          The recurrence count can be fixed, sampled per sequence, or learned per token.
+          <a class="cite" href="#paper-huginn">Geiping '25</a><a class="cite" href="#paper-hyperloop">Zeitoun '26</a>
+        </p>
+        <details class="deeper">
+          <summary>Go deeper · the recurrence as a map<span class="tag">math · 2 min</span></summary>
+          <div class="deeper-body">
+            <p>Write the recurrent block as <code>h<sub>t+1</sub> = f<sub>theta</sub>(h<sub>t</sub>, e)</code>. The current residual <code>h</code> and the original embedding <code>e</code> are mixed again and again. Parcae, Hyperloop, Huginn, and Ouro are mainly different ways of making that repeated map useful and stable.</p>
+          </div>
+        </details>
+        <h3>Three things to keep in your head</h3>
+        <ol>
+          <li><b>Parameters and compute decouple.</b> One shared block times many iterations means more FLOPs without more memory.</li>
+          <li><b>The residual stream is a state.</b> Looping turns a transformer into a discrete dynamical system.</li>
+          <li><b>R is a knob.</b> You can spend it at train time, test time, or per token.</li>
+        </ol>
+      </section>
+
+      <section id="why" class="sec">
+        <div class="sec-head"><span class="sec-num">02</span><h2>Why loop?</h2><span class="sec-tag gray">Motivation</span></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">Three reasons converge: <b>parameter efficiency</b>, <b>latent reasoning</b>, and <b>elastic test-time compute</b>.</div>
+        <h3>1 · Parameter efficiency</h3>
+        <p>Edge deployment is memory-bound. Hyperloop gets depth-matched behavior with roughly 50% fewer parameters by reusing the middle block.</p>
+        <h3>2 · Latent reasoning</h3>
+        <p>Chain-of-thought turns hidden state into text and back. Looped models keep iterating in continuous latent space, preserving information that is hard to express as a word.</p>
+        <h3>3 · Elastic test-time compute</h3>
+        <p>With a loop count or learned exit, the model can spend extra compute only where it pays off: hard tokens, hard questions, or slow-to-converge residual states.</p>
+        <div class="callout"><span class="glyph">↻</span><div><b>The unifying insight.</b> Looping makes inference depth separable from parameter count.</div></div>
+      </section>
+
+      <section id="zoo" class="sec">
+        <div class="sec-head"><span class="sec-num">03</span><h2>The architecture zoo</h2><span class="sec-tag">Updated 2026-04</span></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">Six architectures cover a decade of the idea. They differ in what is shared, how <i>R</i> is chosen, and how instability is controlled.</div>
+        <p>Use the comparator on the right to flip between designs. The shared vocabulary is prelude, recurrent block, and coda. The design decisions live in three places.</p>
+        <table class="tbl">
+          <thead><tr><th>What</th><th>Choices in the wild</th><th>Trade-off</th></tr></thead>
+          <tbody>
+            <tr><td><b>Parameter sharing</b></td><td>Full block, middle only, or middle plus hyper-connections</td><td>More sharing lowers memory; less sharing can be easier to optimize.</td></tr>
+            <tr><td><b>Recurrence count</b></td><td>Fixed, stochastic, learned per token</td><td>Simple, scalable, or adaptive.</td></tr>
+            <tr><td><b>Stability mechanism</b></td><td>Input injection, hyper-connections, spectral bounds</td><td>Without one, residual norms tend to explode.</td></tr>
+          </tbody>
+        </table>
+        <details class="deeper">
+          <summary>Go deeper · what changed in 2026<span class="tag">paper notes · 3 min</span></summary>
+          <div class="deeper-body">
+            <p><b>Parcae</b> reframes looping as a time-varying dynamical system and bounds the spectral norm of the injection map. <b>Hyperloop</b> adds matrix-valued residual streams between loops so reused blocks have more capacity without large parameter growth.</p>
+          </div>
+        </details>
+      </section>
+
+      <section id="mech" class="sec">
+        <div class="sec-head"><span class="sec-num">04</span><h2>Mechanism: fixed points & cyclic trajectories</h2><span class="sec-tag">New finding</span></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">When looped models train well, layers inside the recurrent block often converge to distinct fixed points. The block as a whole traces a stable latent cycle.</div>
+        <p class="lede">This is the most intuition-shifting result: the model runs a stable iterative computation over the same residual stream.</p>
+        <p>Once attention patterns stabilize, extra recurrence stops being chaotic and starts acting like sustained computation. That is why some models extrapolate beyond the depth seen in training.</p>
+        <div class="pull">"Each layer in the cycle converges to a distinct fixed point; the recurrent block follows a consistent cyclic trajectory."<cite>Blayney et al. 2025</cite></div>
+        <h3>Three regimes seen in practice</h3>
+        <ul>
+          <li><b>Fixed point.</b> States stop moving. This is stable and extrapolates well.</li>
+          <li><b>Orbit.</b> States cycle through a closed loop.</li>
+          <li><b>Slider.</b> The state drifts monotonically along a latent direction.</li>
+        </ul>
+      </section>
+
+      <section id="stages" class="sec">
+        <div class="sec-head"><span class="sec-num">05</span><h2>Stages of inference, repeated</h2></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">Looped transformers learn to repeat the four standard stages of inference once per recurrence.</div>
+        <p>Feedforward transformers move through detokenization, feature build-up, reasoning, and token prediction. Looped models compress those phases into the recurrent block and replay them on a refined hidden state.</p>
+        <p>This makes the recurrent block a miniature transformer whose input is the prior pass's residual stream.</p>
+        <div class="callout"><span class="glyph">★</span><div><b>Interpretability consequence.</b> If the stages repeat per loop, feedforward mech-interp tools can be applied per recurrence.</div></div>
+      </section>
+
+      <section id="stability" class="sec">
+        <div class="sec-head"><span class="sec-num">06</span><h2>Training stability & scaling laws</h2><span class="sec-tag">Updated 2026-04</span></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">The classic failure mode is residual explosion. Parcae diagnoses it as a spectral-norm problem and fixes it structurally.</div>
+        <p>Early looped recipes suffered loss spikes and recurrent-state norms swinging across orders of magnitude. Parcae traces the failure to repeated application of an unstable linearized map, then bounds it with a negative-diagonal parameterization.</p>
+        <details class="deeper">
+          <summary>Go deeper · per-sequence sampling<span class="tag">training · 2 min</span></summary>
+          <div class="deeper-body"><p>Instead of sampling one recurrence count for a whole batch, Parcae samples per sequence and pads to the batch max. Shorter sequences hold state, producing a better estimate of steady-state behavior.</p></div>
+        </details>
+        <h3>Scaling laws so far</h3>
+        <ul>
+          <li><b>FLOPs scaling.</b> Loops and data must increase together.</li>
+          <li><b>Test-time scaling.</b> Extra loops follow a saturating exponential, with a task-specific compute appetite.</li>
+        </ul>
+      </section>
+
+      <section id="ttc" class="sec">
+        <div class="sec-head"><span class="sec-num">07</span><h2>Test-time compute scaling</h2></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">A trained looped model can often be run at larger <i>R</i> during inference. Quality climbs until the task saturates.</div>
+        <p>The scrubber on the right shows the shape: reasoning-heavy tasks keep improving with more recurrences, while knowledge-heavy tasks saturate early.</p>
+        <ul>
+          <li><b>Zero-shot adaptive compute.</b> Stop when successive residual states stop changing.</li>
+          <li><b>Per-token early exit.</b> A learned exit head can choose the loop budget token by token.</li>
+        </ul>
+      </section>
+
+      <section id="vs-cot" class="sec">
+        <div class="sec-head"><span class="sec-num">08</span><h2>Latent reasoning vs chain-of-thought</h2><span class="sec-tag">Walkthrough</span></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">Both models eventually produce one token. The difference is what happens between the prompt and that token.</div>
+        <p class="lede">The figure on the right is an eight-step walkthrough: same question, same prompt, same final token, and two different paths through the model.</p>
+        <h3>The key asymmetry: bandwidth</h3>
+        <p>A CoT model must pass every thought through the vocabulary. A looped model keeps the thought in the residual stream and updates that continuous vector directly.</p>
+        <div class="pull">"One token at the end is not the point; the state feeding the unembed carries more worked-through thought."<cite>The essential asymmetry</cite></div>
+        <table class="tbl">
+          <thead><tr><th>Axis</th><th>Chain-of-thought</th><th>Latent looping</th></tr></thead>
+          <tbody>
+            <tr><td>Medium</td><td>Discrete tokens</td><td>Continuous vectors</td></tr>
+            <tr><td>Bandwidth / step</td><td>About one token</td><td>Full residual stream</td></tr>
+            <tr><td>Cost / step</td><td>Full forward pass</td><td>Middle block pass</td></tr>
+            <tr><td>Faithfulness</td><td>Often post-hoc</td><td>Structural</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="open" class="sec">
+        <div class="sec-head"><span class="sec-num">09</span><h2>Open questions</h2></div>
+        <div class="tldr-label">tldr</div>
+        <div class="tldr-body">Five questions the field has not answered yet.</div>
+        <ol>
+          <li><b>Does the 50%-fewer-parameters win persist past 10B?</b></li>
+          <li><b>What determines per-task compute appetite?</b></li>
+          <li><b>Can looped models compose with sparse activation?</b></li>
+          <li><b>Is the fixed point always the right mental model?</b></li>
+          <li><b>What are the alignment implications of latent-space reasoning?</b></li>
+        </ol>
+      </section>
+
+      <section id="deep-dives" class="sec">
+        <div class="sec-head"><span class="sec-num">10</span><h2>Deep dives</h2><span class="sec-tag gray">Paper-grounded</span></div>
+        <div class="tldr-label">read next</div>
+        <div class="tldr-body">Four focused pages go through the paper details behind the overview, with the same text-plus-animation format.</div>
+        <div class="deep-card-grid">
+          <a class="deep-card" href="fixed-point-dynamics.html">
+            <span class="deep-card__kicker">Mechanistic analysis</span>
+            <h3>Fixed-point dynamics</h3>
+            <p>Why Huginn and retrofitted models settle, why Ouro behaves differently, and how orbits/sliders fit the picture.</p>
+          </a>
+          <a class="deep-card" href="stable-looped-training.html">
+            <span class="deep-card__kicker">Parcae</span>
+            <h3>Stable looped training</h3>
+            <p>Residual explosion, spectral radius, negative diagonals, and per-sequence depth sampling.</p>
+          </a>
+          <a class="deep-card" href="adaptive-test-time-compute.html">
+            <span class="deep-card__kicker">Huginn + Ouro</span>
+            <h3>Adaptive test-time compute</h3>
+            <p>KL-threshold exits, learned ponder gates, and task-specific compute appetite.</p>
+          </a>
+          <a class="deep-card" href="architecture-patterns.html">
+            <span class="deep-card__kicker">Hyperloop + comparison</span>
+            <h3>Architecture patterns</h3>
+            <p>Prelude/recurrent/coda, middle-block looping, hyper-connections, and sharing choices.</p>
+          </a>
+        </div>
+      </section>
+
+      <section id="implications" class="sec">
+        <div class="sec-head"><span class="sec-num">11</span><h2>Implications</h2></div>
+        <h3>For deployment</h3>
+        <p>Small looped models can trade extra inference compute for lower memory footprint, which matters for phones, browsers, and edge hardware.</p>
+        <h3>For reasoning</h3>
+        <p>Reasoning becomes a continuous dial rather than a fixed depth or a visible chain of generated tokens.</p>
+        <h3>For interpretability</h3>
+        <p>Stable cycles and fixed points give probes a repeated structure to inspect.</p>
+      </section>
+
+      <section id="glossary" class="sec">
+        <div class="sec-head"><span class="sec-num">12</span><h2>Glossary</h2></div>
+        <table class="tbl">
+          <tbody>
+            <tr><td><b>Looped Transformer</b></td><td>A transformer that re-applies the same block of layers multiple times.</td></tr>
+            <tr><td><b>Residual stream</b></td><td>The running vector each block reads from and writes to.</td></tr>
+            <tr><td><b>Recurrence</b></td><td>The number of times the shared block is applied.</td></tr>
+            <tr><td><b>Fixed point</b></td><td>A state where applying the function leaves the state unchanged.</td></tr>
+            <tr><td><b>Ponder gate</b></td><td>A learned exit head that predicts when to stop looping.</td></tr>
+            <tr><td><b>Hyper-connection</b></td><td>A matrix-valued residual stream used to increase loop capacity.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="papers" class="sec">
+        <div class="sec-head"><span class="sec-num">13</span><h2>Papers cited</h2></div>
+        <div id="paper-huginn" class="paper-card"><span class="yr">2025</span><div><h4>Scaling up Test-Time Compute with Latent Reasoning</h4><p>Huginn recurrent-depth model; shows latent reasoning and test-time recurrence scaling.</p></div></div>
+        <div id="paper-ouro" class="paper-card"><span class="yr">2025</span><div><h4>Scaling Latent Reasoning via Looped Language Models</h4><p>Ouro family with learned exits and 7.7T token training.</p></div></div>
+        <div id="paper-mech" class="paper-card"><span class="yr">2025</span><div><h4>A Mechanistic Analysis of Looped Reasoning Language Models</h4><p>Finds fixed points, cyclic trajectories, and repeated stages of inference.</p></div></div>
+        <div id="paper-parcae" class="paper-card"><span class="yr">2026</span><div><h4>Parcae: Scaling Laws For Stable Looped Language Models</h4><p>Stabilizes looped training and fits scaling laws for loops.</p></div></div>
+        <div id="paper-hyperloop" class="paper-card"><span class="yr">2026</span><div><h4>Hyperloop Transformers</h4><p>Uses hyper-connections and looped middle blocks for parameter efficiency.</p></div></div>
+      </section>
+
+      <section id="changelog" class="sec">
+        <div class="sec-head"><span class="sec-num">14</span><h2>Changelog</h2><span class="sec-tag gray">Live doc</span></div>
+        <div class="cl-row"><div class="when">2026-04-24<span class="ver">v 0.4</span></div><div class="what"><b>Added Hyperloop and Parcae.</b> New stability section, architecture updates, and revised loop-scaling story.</div></div>
+        <div class="cl-row"><div class="when">2025-12-02<span class="ver">v 0.3</span></div><div class="what"><b>Mechanistic analysis.</b> Fixed-point, orbit, and slider taxonomy added.</div></div>
+        <div class="cl-row"><div class="when">2025-10-30<span class="ver">v 0.2</span></div><div class="what"><b>Ouro added.</b> Latent-vs-CoT section introduced.</div></div>
+        <div class="cl-row"><div class="when">2025-02-10<span class="ver">v 0.1</span></div><div class="what"><b>Initial draft.</b> Huginn walkthrough and two-pane layout.</div></div>
+      </section>
+
+      <hr style="border:0;border-top:1px solid var(--rule);margin:48px 0 18px">
+      <p style="font-size:12px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.04em">END · v 0.4 · 2026-04-24</p>
+    </main>
+
+    <aside class="figure-pane">
+      <div class="figure-progress"><span style="width:16.666%"></span></div>
+      <div class="figure-frame">
+        <div class="figure-slot active" data-fig="1">
+          <div class="figure-head"><span class="figure-num">Fig 1</span><span class="figure-title">Computation graph: feedforward vs looped</span><span class="figure-spacer"></span><span class="figure-controls">pinned · scroll-driven</span></div>
+          <div class="figure-body"></div>
+        </div>
+        <div class="figure-slot" data-fig="2">
+          <div class="figure-head"><span class="figure-num">Fig 2</span><span class="figure-title">Recurrence dynamics: fixed points & TTC</span><span class="figure-spacer"></span><span class="figure-controls">pinned</span></div>
+          <div class="figure-body"></div>
+        </div>
+        <div class="figure-slot" data-fig="3">
+          <div class="figure-head"><span class="figure-num">Fig 3</span><span class="figure-title">Architecture zoo</span><span class="figure-spacer"></span><span class="figure-controls">pinned</span></div>
+          <div class="figure-body"></div>
+        </div>
+        <div class="figure-slot" data-fig="4">
+          <div class="figure-head"><span class="figure-num">Fig 4</span><span class="figure-title">Depth-budget allocator</span><span class="figure-spacer"></span><span class="figure-controls">pinned</span></div>
+          <div class="figure-body"></div>
+        </div>
+        <div class="figure-slot" data-fig="5">
+          <div class="figure-head"><span class="figure-num">Fig 5</span><span class="figure-title">Stages of inference</span><span class="figure-spacer"></span><span class="figure-controls">pinned</span></div>
+          <div class="figure-body"></div>
+        </div>
+        <div class="figure-slot" data-fig="6">
+          <div class="figure-head"><span class="figure-num">Fig 6</span><span class="figure-title">What happens to the token? · CoT vs Looped</span><span class="figure-spacer"></span><span class="figure-controls">pinned · scroll-driven</span></div>
+          <div class="figure-body">
+            <div class="step-nav" id="fig6-steps">
+              <button class="step-btn active">01</button>
+              <button class="step-btn">02</button>
+              <button class="step-btn">03</button>
+              <button class="step-btn">04</button>
+              <button class="step-btn">05</button>
+              <button class="step-btn">06</button>
+              <button class="step-btn">07</button>
+              <button class="step-btn">08</button>
+              <span class="step-spacer"></span>
+              <button class="btn" id="fig6-auto">Auto-play</button>
+              <button class="btn step-arrow" id="fig6-prev">←</button>
+              <button class="btn step-arrow" id="fig6-next">→</button>
+            </div>
+            <div class="worked-example">
+              <div class="worked-label">Worked example · both models see the same question</div>
+              <blockquote>"Alice has 3 boxes. Each box has 4 red marbles and 2 blue. How many marbles total?"</blockquote>
+            </div>
+            <div id="fig6-step-title" class="fig6-step-title"><div class="step-kicker">Step 1</div><div class="step-name">The prompt arrives</div></div>
+            <div class="dual-fig">
+              <div class="pane-box">
+                <div class="pane-head"><span class="dot" style="background:var(--teal)"></span><span class="label">Chain-of-Thought</span><span class="sub">GPT-style · thinks in tokens</span></div>
+                <div class="pane-body" id="fig6-cot"></div>
+              </div>
+              <div class="pane-box">
+                <div class="pane-head"><span class="dot" style="background:var(--accent)"></span><span class="label">Looped Transformer</span><span class="sub">Huginn / Ouro · thinks in latent space</span></div>
+                <div class="pane-body" id="fig6-loop"></div>
+              </div>
+            </div>
+            <div class="step-caption" id="fig6-caption"><b>What's happening:</b> Both models see the same question.</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="figures.js?v=20260425c"></script>
+  <script src="script.js?v=20260425c"></script>
+</body>
+</html>

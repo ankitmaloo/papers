@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture | Looped Transformers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .arch-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin: 50px 0;
+      padding: 40px 20px;
+      background: var(--card-bg);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .block {
+      background: rgba(30, 41, 59, 0.8);
+      border: 2px solid #475569;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      width: 180px;
+      position: relative;
+    }
+
+    .block h4 {
+      margin: 0 0 10px 0;
+      color: #fff;
+    }
+
+    .block p {
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .block.looped {
+      border-color: var(--loop-color);
+      box-shadow: 0 0 20px rgba(255, 0, 85, 0.2);
+    }
+    
+    .hyper-conn {
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent-color);
+      color: #000;
+      font-size: 0.7rem;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 10px;
+      white-space: nowrap;
+      animation: pulse-conn 2s infinite;
+    }
+
+    @keyframes pulse-conn {
+      0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+      70% { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+      100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+
+    .arrow {
+      color: var(--accent-color);
+      font-size: 2rem;
+    }
+
+    .loop-indicator {
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--loop-color);
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    
+    .loop-svg {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 40px;
+      fill: none;
+      stroke: var(--loop-color);
+      stroke-width: 2;
+      stroke-dasharray: 5;
+      animation: march 1s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-btn">&larr; Back to Overview</a>
+    <header>
+      <h1>Hyperloop Architecture</h1>
+      <p>Parameter-Efficient Design for Edge and On-Device Deployment</p>
+    </header>
+
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="mechanism.html">Mechanism</a>
+      <a href="scaling.html">Scaling & Stability</a>
+      <a href="architecture.html" class="active">Architecture</a>
+    </nav>
+
+    <div style="animation: fadeInUp 0.8s ease-out;">
+      <h2>The Need for Efficiency</h2>
+      <p>
+        While standard looped models reuse layers, fully recurrent architectures can sometimes struggle to capture the strict sequential feature extraction needed at the very early (embedding/lexical) and very late (projection/decoding) stages of inference.
+      </p>
+      <p>
+        <strong>Zeitoun et al.</strong> introduced the <span class="highlight">Hyper-Connected Looped Transformer (Hyperloop Transformer)</span>. It aims to maximize model quality under strict memory budgets (like edge devices) while maintaining the benefits of latent reasoning.
+      </p>
+
+      <div class="arch-diagram">
+        <div class="block">
+          <h4>Begin Block</h4>
+          <p>Initial feature extraction. Non-recurrent layers.</p>
+        </div>
+        
+        <div class="arrow">&rarr;</div>
+        
+        <div class="block looped">
+          <div class="loop-indicator">&#x21BA; N Loops</div>
+          <svg class="loop-svg" viewBox="0 0 100 40">
+            <path d="M 80 40 C 100 0, 0 0, 20 40" />
+          </svg>
+          <h4>Middle Block</h4>
+          <p>Core reasoning. Recurrently applied layers.</p>
+          <div class="hyper-conn">+ Hyper-Connections</div>
+        </div>
+        
+        <div class="arrow">&rarr;</div>
+        
+        <div class="block">
+          <h4>End Block</h4>
+          <p>Final prediction aggregation. Non-recurrent layers.</p>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <img src="assets/hyperloop_architecture.png" alt="Hyperloop architecture figure showing vanilla looped transformers versus hyper-connected looped transformers" style="width: 100%; max-width: 720px; height: auto; border-radius: 8px; border: 1px solid var(--border-color); background: #fff;">
+        <p style="font-size: 0.8rem; color: var(--muted); margin-top: 5px;">Hyperloop Transformers use specialized block structures and hyper-connections.</p>
+      </div>
+
+      <h2>Hyper-Connections</h2>
+      <p>
+        A key innovation of the Hyperloop architecture is the use of <strong>Hyper-connections</strong>. These expand the standard residual stream into matrix-valued residual streams.
+      </p>
+      <p>
+        Crucially, hyper-connections are applied <em>only after each loop</em> of the Middle Block. This allows the model to maintain separated, distinct states across loops without adding significant parameter overhead or compute cost. The result is a model that outperforms depth-matched baselines despite using approximately <strong>50% fewer parameters</strong>.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

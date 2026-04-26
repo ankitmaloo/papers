@@ -7,128 +7,90 @@ from paper_trail.ingest import PaperIngestError, ingest_issue_event, parse_issue
 
 
 class IngestTests(unittest.TestCase):
-    def test_parse_issue_form_reads_fields(self) -> None:
+    def test_parse_issue_form_reads_simple_paper_submission(self) -> None:
         submission = parse_issue_form(
             """### Paper URL
-https://doi.org/10.5555/3295222.3295349
+https://example.com/looped-a
 
 ### Title override
 _No response_
 
-### Tags
-Transformers, LLM
-attention
-
 ### Notes
-Strong baseline for sequence modeling.
+Use the paper to decide whether any topic is strong enough to update.
 """
         )
 
-        self.assertEqual(submission.paper_url, "https://doi.org/10.5555/3295222.3295349")
-        self.assertIsNone(submission.title_override)
-        self.assertEqual(submission.tags, ["transformers", "llm", "attention"])
-        self.assertEqual(submission.notes, "Strong baseline for sequence modeling.")
+        self.assertEqual(submission.paper_urls, ["https://example.com/looped-a"])
+        self.assertIsNone(submission.topic_title)
+        self.assertEqual(
+            submission.notes,
+            "Use the paper to decide whether any topic is strong enough to update.",
+        )
 
-    def test_ingest_adds_then_updates_existing_record(self) -> None:
+    def test_ingest_creates_paper_record_without_requiring_topic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             data_dir = Path(tmp_dir) / "data"
-            initial_event = {
+            event = {
                 "issue": {
                     "number": 7,
                     "html_url": "https://github.com/octo/papers/issues/7",
                     "body": """### Paper URL
-https://doi.org/10.5555/3295222.3295349
+https://example.com/looped-a
 
 ### Title override
 _No response_
 
-### Tags
-Transformers
-
 ### Notes
-Found through a survey.
+Good foundation paper.
 """,
                 }
             }
-            updated_event = {
-                "issue": {
-                    "number": 8,
-                    "html_url": "https://github.com/octo/papers/issues/8",
-                    "body": """### Paper URL
-https://papers.nips.cc/paper/7181-attention-is-all-you-need
-
-### Title override
-_No response_
-
-### Tags
-architectures, transformers
-
-### Notes
-Reread this because it links nicely to sparse attention work.
-""",
-                }
-            }
-
-            def fake_fetch_json(url: str, accept: str, timeout: int) -> tuple[dict, str]:
-                self.assertIn("10.5555/3295222.3295349", url)
-                return (
-                    {
-                        "title": "Attention Is All You Need",
-                        "author": [
-                            {"given": "Ashish", "family": "Vaswani"},
-                            {"given": "Noam", "family": "Shazeer"},
-                        ],
-                        "container-title": "NeurIPS",
-                        "issued": {"date-parts": [[2017, 6, 12]]},
-                        "DOI": "10.5555/3295222.3295349",
-                        "URL": "https://papers.nips.cc/paper/7181-attention-is-all-you-need",
-                    },
-                    url,
-                )
 
             def fake_fetch_text(url: str, accept: str, timeout: int) -> tuple[str, str]:
-                return (
-                    """<html><head>
-<meta name="citation_title" content="Attention Is All You Need">
-<meta name="citation_author" content="Ashish Vaswani">
-<meta name="citation_author" content="Noam Shazeer">
-<meta name="description" content="A transformer architecture with self-attention.">
-<link rel="canonical" href="https://papers.nips.cc/paper/7181-attention-is-all-you-need">
-</head><body></body></html>""",
-                    url,
-                )
+                if url.endswith("looped-a"):
+                    return (
+                        """<html><head>
+<meta name="citation_title" content="Parcae: Stable Looped Language Models">
+<meta name="citation_author" content="Ada Example">
+<meta name="citation_publication_date" content="2026-04-10">
+<meta name="description" content="A paper about stable looped transformers.">
+<link rel="canonical" href="https://example.com/looped-a">
+</head></html>""",
+                        url,
+                    )
+                raise AssertionError(f"Unexpected URL: {url}")
 
-            added = ingest_issue_event(
-                initial_event,
+            def fake_fetch_json(url: str, accept: str, timeout: int) -> tuple[dict, str]:
+                raise AssertionError("DOI lookup should not run in this test")
+
+            result = ingest_issue_event(
+                event,
                 data_dir=data_dir,
                 fetch_text_func=fake_fetch_text,
                 fetch_json_func=fake_fetch_json,
+                fetch_bytes_func=lambda url, accept, timeout: None,
             )
-            self.assertEqual(added.status, "added")
-            self.assertEqual(added.paper_slug, "attention-is-all-you-need-2017")
 
-            record_path = data_dir / "papers" / "attention-is-all-you-need-2017.json"
-            with record_path.open(encoding="utf-8") as handle:
-                created_record = json.load(handle)
-            self.assertEqual(created_record["tags"], ["transformers"])
-            self.assertEqual(created_record["issue_numbers"], [7])
-            self.assertEqual(len(created_record["notes_history"]), 1)
+            self.assertEqual(result.status, "added")
+            self.assertEqual(result.paper_slug, "parcae-stable-looped-language-models-2026")
+            self.assertIsNone(result.topic_slug)
+            self.assertTrue((data_dir / "papers" / "parcae-stable-looped-language-models-2026.json").exists())
+            self.assertFalse((data_dir / "topics").exists())
 
-            updated = ingest_issue_event(
-                updated_event,
-                data_dir=data_dir,
-                fetch_text_func=fake_fetch_text,
-                fetch_json_func=fake_fetch_json,
+            with (data_dir / "papers" / "parcae-stable-looped-language-models-2026.json").open(
+                encoding="utf-8"
+            ) as handle:
+                paper_record = json.load(handle)
+
+            self.assertEqual(
+                paper_record["paper_summary"],
+                "A paper about stable looped transformers.",
             )
-            self.assertEqual(updated.status, "updated")
-            self.assertEqual(updated.paper_slug, "attention-is-all-you-need-2017")
-
-            with record_path.open(encoding="utf-8") as handle:
-                updated_record = json.load(handle)
-            self.assertEqual(updated_record["tags"], ["transformers", "architectures"])
-            self.assertEqual(updated_record["issue_numbers"], [7, 8])
-            self.assertEqual(len(updated_record["notes_history"]), 2)
-            self.assertEqual(updated_record["title"], "Attention Is All You Need")
+            self.assertEqual(paper_record["key_points"][0], "A paper about stable looped transformers.")
+            self.assertEqual(paper_record["topic_memberships"], [])
+            self.assertEqual(paper_record["source_excerpt_source"], "abstract-only")
+            self.assertEqual(paper_record["source_excerpt"], "A paper about stable looped transformers.")
+            self.assertEqual(result.commit_subject, "chore(papers): add Parcae: Stable Looped Language Models (#7)")
 
     def test_title_override_allows_pdf_only_submission(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -142,9 +104,6 @@ https://example.com/paper.pdf
 
 ### Title override
 My PDF-only Paper
-
-### Tags
-pdf
 
 ### Notes
 _No response_
@@ -163,15 +122,18 @@ _No response_
                 data_dir=data_dir,
                 fetch_text_func=failing_fetch_text,
                 fetch_json_func=failing_fetch_json,
+                fetch_bytes_func=lambda url, accept, timeout: None,
             )
 
             self.assertEqual(result.status, "added")
-            self.assertEqual(result.paper_title, "My PDF-only Paper")
             with (data_dir / "papers" / "my-pdf-only-paper.json").open(encoding="utf-8") as handle:
-                record = json.load(handle)
-            self.assertEqual(record["title"], "My PDF-only Paper")
+                paper_record = json.load(handle)
+            self.assertEqual(paper_record["title"], "My PDF-only Paper")
+            self.assertEqual(
+                paper_record["paper_summary"],
+                "My PDF-only Paper has been ingested. Copilot should replace this placeholder with a grounded paper summary.",
+            )
 
 
 if __name__ == "__main__":
     unittest.main()
-

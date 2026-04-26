@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Paper Trail</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="../assets/app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="hero__eyebrow">Paper-first topic explainers</p>
+        <h1>Track a topic, not just a stack of papers</h1>
+        <p class="lead">Submit a paper, let Copilot decide whether it materially changes a topic, and keep each strong-fit topic page as a living explainer.</p>
+        <div class="stats">
+          <span class="pill">1 topics</span>
+          <span class="pill">0 papers</span>
+          <span class="pill">2 logged deltas</span>
+        </div>
+      </section>
+      <section class="panel controls">
+        <label class="section-label" for="search">Search topics</label>
+        <input
+          id="search"
+          class="search-input"
+          type="search"
+          data-search-input
+          placeholder="Filter by topic, tag, paper title, or update summary"
+        >
+      </section>
+      <p class="empty-state" data-empty-message hidden>No topic explainers match the current search.</p>
+      <section class="topic-grid">
+        <article class="topic-card" data-search-card data-search="looped transformers scaling language models via implicit recurrent latent reasoning rather than token generation. this paradigm allows unrolling a block of transformer layers to arbitrary depth at test-time. parcae establishes scaling laws for stable looped training. reasoning recurrent test-time compute parameter efficiency recurrent blocks converge to distinct fixed points in latent space. looping enables test-time compute scaling without text generation. spectral norm of injection parameters must be constrained for stability. hyper-connections can expand capacity without large parameter overhead. how does looped reasoning scale to multi-modal data? can intermediate latent states be decoded to human-readable thought traces?   demonstrated that negative diagonal parameterization prevents residual explosion in looped architectures. scaled looped architectures to 7.7t tokens, proving viability against 12b parameter models.">
+      <p class="section-label">April 20, 2026 · 0 papers</p>
+      <h2><a href="looped-transformers/">Looped Transformers</a></h2>
+      <p>Scaling language models via implicit recurrent latent reasoning rather than token generation. This paradigm allows unrolling a block of transformer layers to arbitrary depth at test-time.</p>
+      <p class="topic-card__meta">Latest delta: Parcae establishes scaling laws for stable looped training.</p>
+      <div class="tag-row"><span class="tag">Reasoning</span><span class="tag">Recurrent</span><span class="tag">Test-Time Compute</span><span class="tag">Parameter Efficiency</span></div>
+      <div class="button-row">
+        <a class="button button--primary" href="looped-transformers/">Open explainer</a>
+        <a class="button" href="../papers/">Browse papers</a>
+      </div>
+    </article>
+      </section>
+      
+    <section class="section">
+      <p class="section-label">Recent deltas</p>
+      <h2>How the story is changing</h2>
+      <div class="timeline">
+        <article class="timeline-entry">
+              <p class="timeline-entry__meta">April 20, 2026</p>
+              <p class="timeline-entry__title">
+                <a href="looped-transformers/">Looped Transformers</a>
+                ←
+                <a href="../papers/parcae-scaling/">Parcae: Scaling Laws For Stable Looped Language Models</a>
+              </p>
+              <p>Demonstrated that negative diagonal parameterization prevents residual explosion in looped architectures.</p>
+            </article><article class="timeline-entry">
+              <p class="timeline-entry__meta">April 18, 2026</p>
+              <p class="timeline-entry__title">
+                <a href="looped-transformers/">Looped Transformers</a>
+                ←
+                <a href="../papers/ouro-scaling/">Scaling Latent Reasoning via Looped Language Models</a>
+              </p>
+              <p>Scaled looped architectures to 7.7T tokens, proving viability against 12B parameter models.</p>
+            </article>
+      </div>
+    </section>
+    
+      <p class="footer">Generated from repository data. Add papers through the issue form to update the explainer pages.</p>
+    </main>
+  </body>
+</html>

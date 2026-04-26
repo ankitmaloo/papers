@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scaling & Stability | Looped Transformers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .slider-container {
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      margin: 40px 0;
+    }
+    
+    .stats-grid {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 30px;
+    }
+    
+    .stat-box {
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--accent-color);
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .stat-label {
+      font-size: 0.9rem;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .memory-value {
+      color: var(--loop-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-btn">&larr; Back to Overview</a>
+    <header>
+      <h1>Scaling & Stability</h1>
+      <p>Training and Running Looped Models at Scale</p>
+    </header>
+
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="mechanism.html">Mechanism</a>
+      <a href="scaling.html" class="active">Scaling & Stability</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+
+    <div style="animation: fadeInUp 0.8s ease-out;">
+      <h2>Test-Time Compute Simulator</h2>
+      <p>
+        Mainstream models scale test-time compute by producing more output tokens (e.g. Chain-of-Thought). Looped models (like <strong>Huginn</strong> and <strong>Ouro</strong>) scale computation implicitly by unrolling a recurrent block to arbitrary depth. Use the slider below to simulate increasing test-time compute loops.
+      </p>
+
+      <div class="slider-container">
+        <label for="loopSlider" style="display:block; text-align:center; font-weight:bold; margin-bottom:15px;">Number of Recurrent Loops</label>
+        <input type="range" id="loopSlider" min="1" max="15" value="1">
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="val-loops">1</div>
+            <div class="stat-label">Loops</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="val-perf">65%</div>
+            <div class="stat-label">Benchmark Accuracy</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value memory-value" id="val-mem">2.6B</div>
+            <div class="stat-label">Parameters (Memory Footprint)</div>
+          </div>
+        </div>
+      </div>
+
+      <h2>The Stability Challenge: Parcae</h2>
+      <p>
+        While conceptually elegant, training looped architectures is notoriously unstable. As activations cycle through the same layers, they often suffer from <strong>residual explosion</strong> and loss spikes. 
+      </p>
+      <div style="text-align: center; margin: 20px 0;">
+        <img src="assets/parcae_stability_scaling.png" alt="Parcae stabilization and isoFLOP scaling laws figure" style="width: 100%; max-width: 760px; height: auto; border-radius: 8px; border: 1px solid var(--border-color); background: #fff;">
+        <p style="font-size: 0.8rem; color: var(--muted); margin-top: 5px;">Parcae fixes training instabilities compared to standard looping methods.</p>
+      </div>
+      <p>
+        The <strong>Parcae</strong> framework solves this by recasting looping as a nonlinear time-variant dynamical system. The root cause of instability? Large spectral norms in the injection parameters. By introducing a <em>negative diagonal parameterization</em>, Parcae bounds the spectral norm, creating a stable, looped architecture that achieves lower validation perplexity than prior approaches.
+      </p>
+
+      <h2>Ouro: 7.7 Trillion Tokens</h2>
+      <p>
+        The <strong>Ouro</strong> model proves that looped models can scale. Trained on up to 7.7T tokens, Ouro introduces an entropy-regularized objective for learned depth allocation. The result? A 1.4B and 2.6B parameter model that matches the performance of standard models up to 12B parameters across a wide range of benchmarks.
+      </p>
+      <div style="text-align: center; margin: 20px 0;">
+        <img src="assets/ouro_performance.png" alt="Ouro looped language model architecture and benchmark radar plots" style="width: 100%; max-width: 760px; height: auto; border-radius: 8px; border: 1px solid var(--border-color); background: #fff;">
+        <p style="font-size: 0.8rem; color: var(--muted); margin-top: 5px;">Ouro achieves comparable performance to much larger models by scaling latent reasoning.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const slider = document.getElementById("loopSlider");
+      const valLoops = document.getElementById("val-loops");
+      const valPerf = document.getElementById("val-perf");
+      
+      // Simulated performance curve: diminishing returns
+      const basePerf = 65;
+      const maxPerf = 92;
+      
+      slider.addEventListener("input", (e) => {
+        const loops = parseInt(e.target.value);
+        valLoops.textContent = loops;
+        
+        // Logarithmic-like scaling curve
+        const gain = (maxPerf - basePerf) * (1 - Math.exp(-0.3 * (loops - 1)));
+        const currentPerf = (basePerf + gain).toFixed(1);
+        
+        valPerf.textContent = currentPerf + "%";
+        
+        if (loops > 10) {
+          valPerf.style.color = "#F59E0B";
+          valPerf.style.textShadow = "0 0 10px rgba(245, 158, 11, 0.5)";
+        } else {
+          valPerf.style.color = "var(--accent-color)";
+          valPerf.style.textShadow = "none";
+        }
+      });
+    });
+  </script>
+</body>
+</html>

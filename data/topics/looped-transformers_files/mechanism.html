@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechanism | Looped Transformers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .trajectory-container {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin: 40px 0;
+      padding: 30px;
+      background: var(--card-bg);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .spiral-box {
+      width: 200px;
+      height: 200px;
+      position: relative;
+    }
+    
+    .fixed-point {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      background: var(--accent-color);
+      border-radius: 50%;
+      box-shadow: 0 0 15px var(--accent-color);
+    }
+
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--loop-color);
+      border-radius: 50%;
+      top: 10%;
+      left: 10%;
+      animation: spiralIn 4s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+    }
+
+    @keyframes spiralIn {
+      0% { transform: translate(0, 0) scale(1); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translate(90px, 90px) scale(0.5); opacity: 0; }
+    }
+    
+    .stages-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    
+    .stages-list li {
+      background: rgba(245, 158, 11, 0.05);
+      margin-bottom: 15px;
+      padding: 15px 20px;
+      border-left: 4px solid var(--accent-color);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-btn">&larr; Back to Overview</a>
+    <header>
+      <h1>Mechanistic Analysis</h1>
+      <p>Inside the Loop: How Looped Models Reason</p>
+    </header>
+
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="mechanism.html" class="active">Mechanism</a>
+      <a href="scaling.html">Scaling & Stability</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+
+    <div style="animation: fadeInUp 0.8s ease-out;">
+      <h2>Convergence to Fixed Points</h2>
+      <p>
+        In standard feedforward models, the representation of a token continually changes as it passes through each distinct layer. However, what happens when you pass the exact same representation through the <em>same</em> block of layers recursively?
+      </p>
+      <p>
+        Recent mechanistic analysis by <strong>Blayney et al.</strong> reveals a fascinating phenomenon: <span class="highlight">Cyclic Recurrence</span>. As representations loop through the recurrent block, each layer within the block eventually converges to a distinct <strong>fixed point</strong> in the latent space.
+      </p>
+
+      <div class="trajectory-container">
+        <div style="max-width: 50%;">
+          <h3>The Trajectory of Thought</h3>
+          <p>
+            During the first few loops, the representation experiences significant representation drift. But over time, it spirals towards a stable attractor. Once this fixed point is reached, the behavior of the attention heads stabilizes, and further loops produce constant, predictable behavior.
+          </p>
+        </div>
+        <div class="spiral-box">
+          <div class="fixed-point"></div>
+          <div class="particle"></div>
+          <div class="particle" style="animation-delay: 1.3s;"></div>
+          <div class="particle" style="animation-delay: 2.6s;"></div>
+        </div>
+      </div>
+
+      <h2>Stages of Inference</h2>
+      <p>
+        Does looping change how the model processes information? Surprisingly, recurrent blocks learn stages of inference that closely mirror those of standard feedforward models.
+      </p>
+      <ul class="stages-list">
+        <li><strong>Stage 1:</strong> Initial context building and shallow token mixing.</li>
+        <li><strong>Stage 2:</strong> Complex routing and relation extraction.</li>
+        <li><strong>Stage 3:</strong> Final aggregation and prediction formation.</li>
+      </ul>
+      <p>
+        The difference is that a looped model <span class="highlight">repeats these stages in depth</span> with each iteration. Instead of a linear progression, it acts as a deep iterative refinement process, progressively polishing the latent representation until the reasoning path is resolved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,5 +1,5 @@
 const searchInput = document.querySelector("[data-search-input]");
-const cards = Array.from(document.querySelectorAll("[data-paper-card]"));
+const cards = Array.from(document.querySelectorAll("[data-search-card]"));
 const emptyMessage = document.querySelector("[data-empty-message]");
 
 if (searchInput) {

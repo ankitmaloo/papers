@@ -15,9 +15,7 @@ permissions:
 
 jobs:
   add-paper:
-    if: >-
-      startsWith(github.event.issue.title, '[paper]') &&
-      contains(github.event.issue.body, '### Paper URL')
+    if: startsWith(github.event.issue.title, '[paper]')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -36,17 +34,66 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Sync environment
         run: uv sync
+
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
 
       - name: Ingest paper
         id: ingest
         continue-on-error: true
+        env:
+          COPILOT_MODEL: gpt-5.4
+          COPILOT_REASONING_EFFORT: high
         run: |
           uv run python scripts/add_paper.py \
             --event-path "$GITHUB_EVENT_PATH" \
             --data-dir data \
             --github-output "$GITHUB_OUTPUT"
+
+      - name: Verify Copilot authentication
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+        run: |
+          if [ -z "$COPILOT_GITHUB_TOKEN" ]; then
+            echo "::error title=Missing COPILOT_PAT::Add a fine-grained PAT with Copilot Requests permission as the COPILOT_PAT repository secret."
+            exit 1
+          fi
+
+      - name: Render Copilot prompt
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        env:
+          PAPER_SLUG: ${{ steps.ingest.outputs.paper_slug }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PROMPT_PATH: ${{ runner.temp }}/paper-curation.prompt.md
+        run: |
+          uv run python scripts/render_copilot_prompt.py \
+            --data-dir data \
+            --paper-slug "$PAPER_SLUG" \
+            --issue-number "$ISSUE_NUMBER" \
+            --output "$PROMPT_PATH"
+
+      - name: Refresh paper and topics with Copilot
+        if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+          PROMPT_PATH: ${{ runner.temp }}/paper-curation.prompt.md
+        run: |
+          copilot -p "$(cat "$PROMPT_PATH")" \
+            --agent=paper-curator \
+            --model=gpt-5.4 \
+            --reasoning-effort=high \
+            --allow-all-tools \
+            --allow-all-paths \
+            --no-banner \
+            --no-ask-user
 
       - name: Build site
         if: steps.ingest.outputs.status == 'added' || steps.ingest.outputs.status == 'updated'
@@ -64,7 +111,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/papers site
+          git add data/papers data/topics site
           if git diff --cached --quiet; then
             echo "committed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -100,11 +147,27 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.issue.number,
               body: [
-                "I couldn't add this paper automatically.",
+                "I couldn't ingest the paper automatically.",
                 "",
                 process.env.FAILURE_MESSAGE,
                 "",
-                "If the URL points straight to a PDF or an unsupported page, edit the issue and fill in **Title override**."
+                "Use **Title override** when the source page has weak metadata."
+              ].join("\n")
+            });
+
+      - name: Comment on issue after Copilot workflow failure
+        if: failure() && steps.ingest.outputs.status != 'failed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                "I couldn't finish curating the paper and related topics.",
+                "",
+                "Check that the repository secret `COPILOT_PAT` exists, that it has the **Copilot Requests** permission, and that Copilot CLI is allowed for the account running this workflow."
               ].join("\n")
             });
 
@@ -113,11 +176,14 @@ jobs:
         uses: actions/github-script@v7
         env:
           STATUS: ${{ steps.ingest.outputs.status }}
+          PAPERS_COUNT: ${{ steps.ingest.outputs.papers_count }}
           PAPER_SLUG: ${{ steps.ingest.outputs.paper_slug }}
           PAPER_TITLE: ${{ steps.ingest.outputs.paper_title }}
           PAGE_BASE_URL: ${{ steps.deployment.outputs.page_url }}
         with:
           script: |
+            const fs = require("fs");
+            const path = require("path");
             const owner = context.repo.owner.toLowerCase();
             const repo = context.repo.repo;
             const fallbackBase = repo.toLowerCase() === `${owner}.github.io`
@@ -130,6 +196,34 @@ jobs:
               : process.env.STATUS === "unchanged"
                 ? "was already up to date"
                 : "added";
+            const papersCount = Number(process.env.PAPERS_COUNT || "1");
+            const paperPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), "data", "papers", `${process.env.PAPER_SLUG}.json`);
+            let record = {};
+            try {
+              record = JSON.parse(fs.readFileSync(paperPath, "utf8"));
+            } catch {}
+            let memberships = Array.isArray(record.topic_memberships) ? record.topic_memberships : [];
+            if (!memberships.length && Array.isArray(record.topic_updates)) {
+              const seen = new Set();
+              memberships = record.topic_updates
+                .filter((entry) => entry && entry.topic_slug && entry.topic_title)
+                .filter((entry) => {
+                  if (seen.has(entry.topic_slug)) return false;
+                  seen.add(entry.topic_slug);
+                  return true;
+                })
+                .map((entry) => ({
+                  topic_slug: entry.topic_slug,
+                  topic_title: entry.topic_title,
+                  why_it_matters: entry.why_it_matters || entry.summary || ""
+                }));
+            }
+            const primaryTopicSlug = record.primary_topic_slug || memberships[0]?.topic_slug;
+            const primaryTopicTitle = record.primary_topic_title || memberships[0]?.topic_title;
+            const topicLines = memberships.slice(0, 5).map((entry) => {
+              const topicUrl = `${baseUrl.replace(/\/?$/, "/")}topics/${entry.topic_slug}/`;
+              return `- ${entry.topic_title}: ${topicUrl}`;
+            });
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -137,7 +231,14 @@ jobs:
               body: [
                 `Paper ${verb}: **${process.env.PAPER_TITLE}**`,
                 "",
-                `Page: ${paperUrl}`
+                "Copilot summarized the paper and re-evaluated which topics, if any, clear the update bar.",
+                "",
+                `Paper page: ${paperUrl}`,
+                primaryTopicSlug
+                  ? `Primary topic: ${primaryTopicTitle} — ${baseUrl.replace(/\/?$/, "/")}topics/${primaryTopicSlug}/`
+                  : "No topic cleared the update bar strongly enough to create or update a topic page yet.",
+                ...(topicLines.length ? ["", "Related topics updated:", ...topicLines] : []),
+                `${papersCount} paper${papersCount === 1 ? "" : "s"} in this submission`
               ].join("\n")
             });
             await github.rest.issues.update({

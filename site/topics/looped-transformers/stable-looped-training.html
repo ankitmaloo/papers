@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stable looped training - Looped Transformers</title>
+  <link rel="stylesheet" href="style.css?v=20260425f">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span><span class="brand-title">Looped Transformers</span><span style="color:var(--ink-faint);margin-left:6px">· stable training</span></div>
+    <div class="meta"><a class="pill" href="index.html">Back to overview</a><span class="pill ver">Parcae</span></div>
+  </div>
+
+  <div class="depth-shell">
+    <main class="depth-main">
+      <div class="eyebrow"><span>Deep dive</span><span class="sep"></span><span>Parcae 2026</span></div>
+      <h1 class="title">Why looped training blows up, and how Parcae controls it</h1>
+      <p class="hero-deck">
+        Parcae is useful because it turns a vague training problem into something you can inspect. If the recurrence expands the residual state, repeated loops amplify the expansion. The paper constrains the part of the model that causes that behavior.
+      </p>
+      <div class="metric-strip">
+        <div class="metric"><div class="k">Failure signal</div><div class="v">loss spikes</div><p>Runs can look fine early, then destabilize once recurrent residuals grow.</p></div>
+        <div class="metric"><div class="k">Diagnosis</div><div class="v">spectral norm</div><p>The linearized recurrence exposes which learned terms can expand state.</p></div>
+        <div class="metric"><div class="k">Training fix</div><div class="v">per-sequence R</div><p>Each sequence samples its own depth while the batch pads to the maximum.</p></div>
+      </div>
+
+      <section class="sec stable-scene" id="loss-spikes" data-stable-scene="spike">
+        <div class="sec-head"><span class="sec-num">01</span><h2>The failure is visible during training</h2><span class="sec-tag">Residual explosion</span></div>
+        <div class="tldr-label">paper observation</div>
+        <div class="tldr-body">
+          Prior looped models can train for a while and then hit loss spikes. The residual state grows across recurrences, and training becomes unstable.
+        </div>
+        <p>
+          The paper describes two related problems: residual state explosion and loss spikes. The obvious story would be “shared layers are hard to train.” Parcae gives a more specific diagnosis: the recurrence contains injection parameters that can learn an expansive map.
+        </p>
+        <p>
+          Once a map expands the state, recurrence makes the effect compound. A small expansion per loop becomes a large norm shift after many loops. This is why a looped model can look stable at low recurrence and fail at higher recurrence.
+        </p>
+        <div class="storyboard">
+          <div class="story-step"><span class="n">run</span><div><b>The loss curve spikes.</b><p>The paper starts from a visible training symptom, not from a stylistic dislike of recurrence.</p></div></div>
+          <div class="story-step"><span class="n">measure</span><div><b>Residual norms grow through the loop.</b><p>The hidden state is being repeatedly expanded, so the model sees larger activations at later recurrence steps.</p></div></div>
+          <div class="story-step"><span class="n">model</span><div><b>Linearize the update.</b><p>Writing the recurrence as an injected state-space system gives the authors a concrete stability boundary to control.</p></div></div>
+        </div>
+      </section>
+
+      <section class="sec stable-scene" id="system-view" data-stable-scene="system">
+        <div class="sec-head"><span class="sec-num">02</span><h2>The recurrence as a system</h2></div>
+        <div class="tldr-label">mechanism</div>
+        <div class="tldr-body">Parcae treats the recurrent block as a dynamical system with learned input injection, then constrains the expansive part.</div>
+        <p>
+          Parcae writes the loop in a form close to:
+        </p>
+        <div class="equation-card">
+          <div class="eq-line">h<sub>t+1</sub> = A h<sub>t</sub> + B e + R(h<sub>t</sub>, e)</div>
+          <p><b>h</b> is the residual state, <b>e</b> is the input signal re-injected into the loop, <b>A</b> and <b>B</b> are learned injection terms, and <b>R</b> is the nonlinear transformer block.</p>
+        </div>
+        <p>
+          The linearized view gives the paper something concrete to measure. If the spectral radius of the recurrent part crosses the stability boundary, the state can diverge. The nonlinear block still matters, but the linear analysis explains why some trained runs learn unstable behavior.
+        </p>
+        <div class="paper-note">
+          <h3>What the animation is showing</h3>
+          <p>The right pane uses rho as a one-number stand-in for expansion. Below 1, repeated application settles. Above 1, the state grows across loops. Parcae is about making the stable case natural for the optimizer.</p>
+        </div>
+      </section>
+
+      <section class="sec stable-scene" id="negative-diagonal" data-stable-scene="constraint">
+        <div class="sec-head"><span class="sec-num">03</span><h2>The negative diagonal parameterization</h2><span class="sec-tag gray">Architecture</span></div>
+        <div class="tldr-label">architecture move</div>
+        <div class="tldr-body">The stability control is built into the parameterization, so the recurrent update starts from a safer family of maps.</div>
+        <p>
+          Parcae parameterizes the injection dynamics through a negative diagonal form and then discretizes it. The point is structural: the model is pushed toward a stable update rule before training gets a chance to discover a bad one.
+        </p>
+        <p>
+          This is different from clipping a bad run after the fact. The architecture changes which recurrent maps are easy for the optimizer to represent. That is why the paper can talk about stable looping as a design property.
+        </p>
+        <div class="evidence-grid">
+          <div class="evidence-card">
+            <b>Before Parcae</b>
+            <p>Unconstrained looped models can learn injection matrices associated with unstable residual dynamics.</p>
+          </div>
+          <div class="evidence-card">
+            <b>With Parcae</b>
+            <p>The injection parameterization constrains the spectral norm and reduces residual explosion.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec stable-scene" id="sequence-depth" data-stable-scene="sampling">
+        <div class="sec-head"><span class="sec-num">04</span><h2>Per-sequence depth sampling</h2></div>
+        <div class="tldr-label">training objective</div>
+        <div class="tldr-body">The model has to learn a range of depths. Sampling depth per sequence gives the batch a richer depth distribution.</div>
+        <p>
+          The training algorithm matters too. If every sequence in a micro-batch uses the same sampled recurrence depth, the gradient sees a narrow slice of the depth distribution at each step. Parcae samples depth per sequence and pads computation to the maximum depth in the micro-batch.
+        </p>
+        <p>
+          The paper reports that this reduces loss spikes. It also improves behavior at lower test-time recurrences. That is useful because a deployed model may exit early for easy tokens.
+        </p>
+        <div class="paper-list">
+          <div class="row"><span class="tag">batch depth</span><p>One sampled depth for the whole micro-batch. Cheaper to think about, more brittle in the reported training curves.</p></div>
+          <div class="row"><span class="tag">sequence depth</span><p>Each sequence gets its own sampled recurrence depth. Shorter sequences hold state while longer ones keep looping.</p></div>
+        </div>
+      </section>
+
+      <section class="sec stable-scene" id="scaling-after-stability" data-stable-scene="scaling">
+        <div class="sec-head"><span class="sec-num">05</span><h2>Scaling laws after stability</h2></div>
+        <div class="tldr-label">scaling result</div>
+        <div class="tldr-body">Once the loop is stable, recurrence becomes a compute axis that can be traded against data and evaluated with isoFLOP curves.</div>
+        <p>
+          Once training is stable, Parcae studies looping as a compute axis. The paper's isoFLOP experiments show an optimum recurrence level at a fixed FLOP budget. Increasing loops without enough data is wasteful; increasing data without enough recurrence leaves compute on the table.
+        </p>
+        <p>
+          The clean result is that recurrence behaves like an axis you can scale alongside data. That is why Parcae matters beyond its architecture: it gives looped training a scaling story instead of a set of hand-tuned recipes.
+        </p>
+      </section>
+
+      <section class="sec stable-scene" id="carry-forward" data-stable-scene="recipe">
+        <div class="sec-head"><span class="sec-num">06</span><h2>What to carry forward</h2></div>
+        <div class="tldr-label">checklist</div>
+        <div class="tldr-body">A looped training recipe needs stable dynamics, recurrence-aware sampling, and scaling experiments that vary loops and data together.</div>
+        <ul class="check-list">
+          <li><b>Stability is a model property.</b> The loop must be stable across recurrence and across the depths you plan to run.</li>
+          <li><b>Sampling matters.</b> Variable depth is part of the objective, so the sampling scheme changes the optimization problem.</li>
+          <li><b>Scaling needs both loops and data.</b> Parcae's isoFLOP result argues for coordinated scaling.</li>
+        </ul>
+      </section>
+    </main>
+
+    <aside class="depth-figure">
+      <div class="depth-figure__head"><span>Interactive</span><b>Stability under recurrence</b></div>
+      <div class="depth-viz stable-explainer" id="stable-explainer">
+        <div class="depth-controls stable-controls">
+          <div class="stable-tabs" role="tablist" aria-label="Stable loop training scenes">
+            <button class="btn on" data-stable-scene="spike">Spike</button>
+            <button class="btn" data-stable-scene="system">System</button>
+            <button class="btn" data-stable-scene="constraint">Constraint</button>
+            <button class="btn" data-stable-scene="sampling">Sampling</button>
+            <button class="btn" data-stable-scene="scaling">Scaling</button>
+            <button class="btn" data-stable-scene="recipe">Recipe</button>
+          </div>
+        </div>
+        <div class="stable-stage">
+          <div class="stable-primary" aria-live="polite"></div>
+          <div class="stable-side" aria-live="polite"></div>
+        </div>
+        <div class="stable-readout"></div>
+        <div class="depth-note stable-note"></div>
+      </div>
+    </aside>
+  </div>
+  <script src="looped-depth.js?v=20260425l"></script>
+</body>
+</html>

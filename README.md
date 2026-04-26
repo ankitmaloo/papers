@@ -1,21 +1,27 @@
 # Paper Trail
 
-Paper Trail turns GitHub issues into a browsable paper library. Open an **Add paper** issue with a paper URL, and GitHub Actions will fetch metadata, store the paper in the repo, rebuild the site, and publish a GitHub Pages page for it.
+Paper Trail turns paper submissions into Copilot-authored paper summaries and topic explainers. Submit a paper URL, and GitHub Actions will fetch metadata, create or update the paper record, hand the repository context to Copilot, let Copilot decide which topics genuinely fit, update only the strong-fit topic pages, rebuild the site, and publish the result on GitHub Pages.
 
 ## What this repo does
 
-- accepts a paper URL through a GitHub Issue form
-- stores each paper as structured JSON under `data/papers/`
+- accepts paper submissions through a GitHub Issue form
+- stores each submitted paper as structured JSON under `data/papers/`
+- groups strong-fit papers under topic explainers stored in `data/topics/`
+- stores Copilot-authored explainer fragments at `data/topics/<slug>.explainer.html`
+- uses GitHub Copilot CLI inside Actions with a custom `paper-curator` agent pinned to `gpt-5.4` and `high` reasoning effort
 - generates a visual static site under `site/`
 - publishes the site on GitHub Pages
-- keeps paper additions and updates in normal git history with descriptive commits
+- keeps topic and paper updates in normal git history with descriptive commits
 
 ## Repository layout
 
 - `src/paper_trail/` - ingestion and site-generation logic
 - `scripts/` - CLI entrypoints used locally and in GitHub Actions
-- `data/papers/` - one JSON file per paper
+- `data/papers/` - one JSON file per supporting paper
+- `data/topics/` - one JSON file per topic explainer
+- `data/topics/*.explainer.html` - the Copilot-authored visual explainer fragments that get embedded into topic pages
 - `site/` - generated Pages output
+- `.github/agents/` - Copilot custom agents used by the workflow
 - `.github/ISSUE_TEMPLATE/` - the issue form for new papers
 - `.github/workflows/` - automation for ingesting papers, validating changes, and publishing Pages
 
@@ -23,17 +29,26 @@ Paper Trail turns GitHub issues into a browsable paper library. Open an **Add pa
 
 1. Create a new GitHub repository from this folder and push it to `main`.
 2. In **Settings -> Actions -> General**, allow workflows to create and approve pull requests if your org policy requires it, and make sure the default `GITHUB_TOKEN` can write contents.
-3. In **Settings -> Pages**, set the source to **GitHub Actions**.
-4. Open the **Add paper** issue form, paste a paper URL, and submit it. No manual labeling is required.
+3. Add a repository secret named `COPILOT_PAT`. It must be a fine-grained personal access token with the **Copilot Requests** permission.
+4. If Copilot access is managed by an organization, make sure Copilot CLI is allowed for the account behind that token.
+5. In **Settings -> Pages**, set the source to **GitHub Actions**.
+6. Open the **Add paper** issue form, paste the paper URL, and submit it. No manual labeling or manual topic naming is required.
 
 The workflow will:
 
 1. read the issue body
-2. resolve paper metadata from the URL
-3. write or update `data/papers/<slug>.json`
-4. rebuild `site/`
-5. commit the change with a message like `chore(papers): add Attention Is All You Need (#12)`
-6. deploy the site and comment back with the paper URL
+2. resolve paper metadata from the submitted URLs
+3. extract paper text when a PDF is available and store short evidence excerpts in the paper record
+4. write or update `data/papers/<slug>.json`
+5. render a concrete prompt for Copilot
+6. run the `paper-curator` custom agent so it:
+   - writes a grounded paper summary
+   - decides which existing topics, if any, genuinely fit
+   - updates only the strong-fit topic pages
+   - creates a new topic only when the paper is central enough
+7. rebuild `site/`
+8. commit the change with a message like `chore(papers): add Depth Schedules for Looped Transformers (#12)`
+9. deploy the site and comment back with the paper page plus any updated topic URLs
 
 ## Local commands
 
@@ -61,9 +76,16 @@ Replay an issue event locally:
 uv run python scripts/add_paper.py --event-path /path/to/github-event.json --data-dir data
 ```
 
+Render the Copilot prompt for a topic locally:
+
+```bash
+uv run python scripts/render_copilot_prompt.py --data-dir data --paper-slug depth-schedules-for-looped-transformers-2026
+```
+
 ## URL structure
 
 - Home page: `https://<owner>.github.io/<repo>/`
+- Topic page: `https://<owner>.github.io/<repo>/topics/<slug>/`
 - Paper page: `https://<owner>.github.io/<repo>/papers/<slug>/`
 
 If the repository itself is named `<owner>.github.io`, Pages will publish at the root domain instead of the `/<repo>/` path segment.
