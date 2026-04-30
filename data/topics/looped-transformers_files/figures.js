@@ -6,7 +6,7 @@ function initFig1(el) {
   const residSeed=(i,l)=>Math.sin(i*1.7+l*0.6)*0.5+Math.sin(i*0.5+l*1.3)*0.4;
 
   el.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-    <div class="seg"><button class="on" data-m="ff">Feedforward</button><button data-m="loop">Looped</button></div>
+    <div class="seg"><button data-m="ff">Feedforward</button><button class="on" data-m="loop">Looped</button></div>
     <button class="btn" id="f1play">Pause</button>
     <input type="range" min="0" max="1000" value="0" style="flex:1" id="f1rng">
     <span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)" id="f1dep">depth 0.0</span>
@@ -64,19 +64,37 @@ function initFig1(el) {
 // Fig 2: PCA fixed points + TTC curves
 function initFig2(el) {
   let r=8,show='pca';
+  let playing=true,dir=1,autoTimer=null;
   const traj=(()=>{const tgt=[[-6,4],[4,5],[6,-4],[-4,-5]];return tgt.map((t,l)=>{let p=[Math.cos(l*1.7)*9,Math.sin(l*1.7)*9];const path=[];for(let i=0;i<32;i++){const k=.18+l*.02,n=.6*Math.exp(-i*.25);p=[p[0]+(t[0]-p[0])*k+Math.sin(i*(1.3+l))*n,p[1]+(t[1]-p[1])*k+Math.cos(i*(1.7+l*.5))*n];path.push([...p]);}return{path,target:t,color:['var(--accent)','var(--teal)','var(--ink-soft)','var(--ink-muted)'][l]};});})();
   const ttc=[{name:'GSM8K',a:51,k:.085,b:8,c:'var(--accent)'},{name:'ARC-C',a:44,k:.18,b:22,c:'var(--teal)'},{name:'OBQA',a:41,k:.32,b:28,c:'var(--ink-soft)'}].map(t=>({...t,pts:Array.from({length:32},(_,i)=>[i+1,t.b+(t.a-t.b)*(1-Math.exp(-t.k*(i+1)))])}));
 
   el.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
     <div class="seg"><button class="on" data-s="pca">Latent PCA</button><button data-s="ttc">Test-time compute</button></div>
-    <span style="flex:1"></span><span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)" id="f2r">R = 8</span>
+    <span style="flex:1"></span><button class="btn on" id="f2auto">Pause</button><span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)" id="f2r">R = 8</span>
   </div>
   <input type="range" min="1" max="32" value="8" style="width:100%;margin-bottom:10px" id="f2rng">
   <svg id="f2svg" viewBox="0 0 500 340" style="width:100%"></svg>
   <div class="figure-caption"><b>Figure 2 · <span id="f2cap">Cyclic fixed points</span></b> <span id="f2desc">Each line is one layer. As R grows, layers converge to distinct fixed points.</span></div>`;
 
   el.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{show=b.dataset.s;el.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x===b));draw();}));
-  document.getElementById('f2rng').addEventListener('input',function(){r=+this.value;document.getElementById('f2r').textContent=`R = ${r}`;draw();});
+  document.getElementById('f2rng').addEventListener('input',function(){setAuto(false);r=+this.value;document.getElementById('f2r').textContent=`R = ${r}`;draw();});
+  document.getElementById('f2auto').addEventListener('click',()=>setAuto(!playing));
+
+  function setAuto(on){
+    playing=on;
+    const btn=document.getElementById('f2auto');
+    btn.classList.toggle('on',on);
+    btn.textContent=on?'Pause':'Auto-play';
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+    if(on)autoTimer=setInterval(()=>{
+      r+=dir;
+      if(r>=32){r=32;dir=-1;show=show==='pca'?'ttc':'pca';el.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x.dataset.s===show));}
+      if(r<=1){r=1;dir=1;show=show==='pca'?'ttc':'pca';el.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x.dataset.s===show));}
+      document.getElementById('f2r').textContent=`R = ${r}`;
+      document.getElementById('f2rng').value=r;
+      draw();
+    },180);
+  }
 
   function draw(){
     const svg=document.getElementById('f2svg');
@@ -116,23 +134,28 @@ function initFig2(el) {
       document.getElementById('f2desc').textContent='Accuracy vs recurrence depth. Reasoning tasks keep climbing; memorization plateaus early.';
     }
   }
-  draw();
+  draw();setAuto(true);
 }
 
 // Fig 3: Architecture zoo
 function initFig3(el) {
   const ARCHS=[
     {id:'universal',name:'Universal Transformer',year:'2018',who:'Dehghani',short:'Single shared block applied dynamically per token.',traits:{'share':'all','depth':'adaptive','stability':'low','scale':'small'}},
+    {id:'recursive',name:'Recursive / Recurrent-depth',year:'2024-25',who:'Bae / Geiping',short:'Modern recipe: prelude → recurrent block × R → coda. Stable, scaled to 3.5B+.',traits:{'share':'middle only','depth':'test-time scalable','stability':'med','scale':'3.5B'},nw:true},
     {id:'huginn',name:'Huginn',year:'2025',who:'Geiping',short:'Prelude → recurrent block × R → coda. 3.5B, test-time scalable.',traits:{'share':'middle','depth':'scalable','stability':'high','scale':'3.5B'},nw:true},
     {id:'ouro',name:'Ouro (LoopLM)',year:'2025',who:'ByteDance',short:'Learned per-token exit gate. 7.7T tokens.',traits:{'share':'full block','depth':'learned exit','stability':'med','scale':'2.6B'},nw:true},
     {id:'parcae',name:'Parcae',year:'2026',who:'UCSD',short:'Stable looping via negative diagonal parameterization.',traits:{'share':'middle','depth':'predictable','stability':'high','scale':'1.3B'},nw:true},
     {id:'hyperloop',name:'Hyperloop',year:'2026',who:'MIT',short:'Hyper-connections + looping. 50% fewer params.',traits:{'share':'middle+hyper','depth':'fixed R=3','stability':'high','scale':'≤1B'},nw:true},
   ];
-  let sel='huginn';
+  let sel='recursive',playing=true,autoTimer=null,autoIdx=1;
 
   function render(){
     const a=ARCHS.find(x=>x.id===sel);
-    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px">
+    el.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <button class="btn${playing?' on':''}" id="f3auto">${playing?'Pause':'Auto-play'}</button>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)">cycle through architectures</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px">
       ${ARCHS.map(x=>`<button class="btn${sel===x.id?' on':''}" data-a="${x.id}" style="text-align:left;padding:6px 8px;text-transform:none;letter-spacing:0;line-height:1.3;font-size:11px;position:relative">
         <span style="font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.04em">${x.year}</span><br>
         <span style="font-weight:500">${x.name}</span>
@@ -148,14 +171,24 @@ function initFig3(el) {
       </div>
     </div>
     <div class="figure-caption"><b>Figure 3 · Architecture zoo</b> Six looped designs. They differ in what is shared, how R is chosen, and how stability is achieved.</div>`;
-    el.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{sel=b.dataset.a;render();}));
+    document.getElementById('f3auto').addEventListener('click',()=>setAuto(!playing));
+    el.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{setAuto(false);sel=b.dataset.a;autoIdx=ARCHS.findIndex(x=>x.id===sel);render();}));
   }
-  render();
+  function setAuto(on){
+    playing=on;
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+    if(on)autoTimer=setInterval(()=>{autoIdx=(autoIdx+1)%ARCHS.length;sel=ARCHS[autoIdx].id;render();},2200);
+    const btn=document.getElementById('f3auto');
+    if(btn){btn.classList.toggle('on',on);btn.textContent=on?'Pause':'Auto-play';}
+  }
+  render();setAuto(true);
 }
 
 // Fig 4: Depth-budget allocator
 function initFig4(el) {
-  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+  let playing=true,autoTimer=null,phase=0;
+  el.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><button class="btn on" id="f4auto">Pause</button><span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)">sweep budget and split</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
     <div><div style="font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">FLOPs budget</div>
       <input type="range" min="2" max="16" value="8" id="f4b" style="width:100%">
       <div style="font-family:var(--mono);font-size:10px;color:var(--ink-muted);margin-top:2px" id="f4bl"></div></div>
@@ -172,17 +205,56 @@ function initFig4(el) {
     const matchedFF=paramScale*loops;
     const baseQ=60+6*Math.log2(paramScale/50)+4.5*Math.log2(loops);
     const quality=baseQ*(1-.0006*Math.pow(params-55,2));
+    const memoryPct=Math.min(100,Math.max(8,paramScale/600*100));
+    const computePct=Math.min(100,Math.max(8,matchedFF/12000*100));
+    const latencyPct=Math.min(100,Math.max(8,loops/40*100));
+    const bar=(label,value,pct,color)=>`
+      <div style="margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;font-family:var(--mono);font-size:10.5px;color:var(--ink-muted);margin-bottom:5px">
+          <span>${label}</span><span style="color:var(--ink-soft)">${value}</span>
+        </div>
+        <div style="height:10px;border:1px solid var(--rule);border-radius:3px;background:var(--bg-tint);overflow:hidden">
+          <span style="display:block;height:100%;width:${pct}%;background:${color}"></span>
+        </div>
+      </div>`;
     document.getElementById('f4bl').textContent=`~${(Math.log2(budget)+5).toFixed(1)} log₂ FLOPs`;
-    document.getElementById('f4pl').textContent=`${params}% params · ${100-params}% loops`;
+    document.getElementById('f4pl').innerHTML=`<span style="color:var(--ink-muted)">← all-loop</span> <span style="color:var(--accent)">${params}% params · ${100-params}% loops</span> <span style="color:var(--ink-muted)">all-param →</span>`;
     document.getElementById('f4out').innerHTML=`
-      <div style="font-size:24px;font-weight:500;letter-spacing:-.02em;margin-bottom:8px">${paramScale}M × ${loops} <span style="color:var(--ink-faint);font-size:16px">loops</span></div>
-      <div style="font-size:12px;color:var(--ink-muted);line-height:1.5;margin-bottom:12px">Acts like a <b style="color:var(--accent)">${(matchedFF/1000).toFixed(1)}B</b> feedforward model, memory cost of ${paramScale}M params.</div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em">predicted quality (toy)</div>
-      <div style="font-size:32px;font-weight:500;color:var(--accent);letter-spacing:-.02em">${quality.toFixed(1)}</div>`;
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;min-height:250px">
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.09em;text-transform:uppercase;margin-bottom:14px">Chosen configuration</div>
+          <div style="font-size:34px;font-weight:500;letter-spacing:-.03em;line-height:1;margin-bottom:14px">${paramScale}M × ${loops}<span style="color:var(--ink-faint);font-size:19px;margin-left:3px">loops</span></div>
+          <div style="font-size:13px;color:var(--ink-muted);line-height:1.45;margin-bottom:20px">Acts like a feedforward model with <b style="color:var(--accent)">${(matchedFF/1000).toFixed(1)}B</b> materialized FLOPs at inference, while paying memory for ${paramScale}M parameters.</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Predicted quality (toy)</div>
+          <div style="font-size:42px;font-weight:500;color:var(--accent);letter-spacing:-.03em;line-height:1">${quality.toFixed(1)}</div>
+          <div style="font-size:12px;color:var(--ink-muted);margin-top:4px">arbitrary CORE-style score</div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.09em;text-transform:uppercase;margin-bottom:18px">Memory vs compute</div>
+          ${bar('memory footprint',`${paramScale}M params`,memoryPct,'var(--ink-soft)')}
+          ${bar('compute @ inference',`${(matchedFF/1000).toFixed(1)}B effective`,computePct,'var(--accent)')}
+          ${bar('latency (token)',`${loops}× block`,latencyPct,'var(--teal)')}
+          <div style="font-size:13px;color:var(--ink-muted);line-height:1.45;margin-top:22px"><b style="color:var(--ink)">Heuristic from Parcae:</b> at fixed FLOPs, jointly increase loops and data; loop count scales sub-linearly. Pure all-param wins memorization; pure all-loop wins reasoning.</div>
+        </div>
+      </div>`;
   }
-  document.getElementById('f4b').addEventListener('input',draw);
-  document.getElementById('f4p').addEventListener('input',draw);
-  draw();
+  document.getElementById('f4b').addEventListener('input',()=>{setAuto(false);draw();});
+  document.getElementById('f4p').addEventListener('input',()=>{setAuto(false);draw();});
+  document.getElementById('f4auto').addEventListener('click',()=>setAuto(!playing));
+  function setAuto(on){
+    playing=on;
+    const btn=document.getElementById('f4auto');
+    btn.classList.toggle('on',on);
+    btn.textContent=on?'Pause':'Auto-play';
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+    if(on)autoTimer=setInterval(()=>{
+      phase+=0.055;
+      document.getElementById('f4b').value=Math.round(9+6*Math.sin(phase));
+      document.getElementById('f4p').value=Math.round(54+28*Math.sin(phase*.73+1.1));
+      draw();
+    },140);
+  }
+  draw();setAuto(true);
 }
 
 // Fig 5: Stages of inference

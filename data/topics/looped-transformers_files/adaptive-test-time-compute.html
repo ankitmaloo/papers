@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adaptive test-time compute - Looped Transformers</title>
+  <link rel="stylesheet" href="style.css?v=20260425c">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span><span class="brand-title">Looped Transformers</span><span style="color:var(--ink-faint);margin-left:6px">· adaptive compute</span></div>
+    <div class="meta"><a class="pill" href="index.html">Back to overview</a><span class="pill ver">Huginn + Ouro</span></div>
+  </div>
+
+  <div class="depth-shell">
+    <main class="depth-main">
+      <div class="eyebrow"><span>Deep dive</span><span class="sep"></span><span>Huginn · Ouro</span></div>
+      <h1 class="title">How a looped model decides how long to think</h1>
+      <p class="hero-deck">
+        Test-time compute in these papers is recurrence depth. Huginn shows that extra recurrence can improve reasoning.
+        Ouro adds a learned exit mechanism so the model can stop earlier on easier inputs.
+      </p>
+      <div class="metric-strip">
+        <div class="metric"><div class="k">Compute knob</div><div class="v">R</div><p>More recurrent passes before decoding the next token.</p></div>
+        <div class="metric"><div class="k">Huginn signal</div><div class="v">state change</div><p>Successive loop states can be compared to decide when to stop.</p></div>
+        <div class="metric"><div class="k">Ouro signal</div><div class="v">exit gate</div><p>A learned distribution assigns probability to stopping at each recurrent step.</p></div>
+      </div>
+
+      <section class="sec exit-scene" id="huginn-depth" data-exit-token="hard" data-exit-policy="kl">
+        <div class="sec-head"><span class="sec-num">01</span><h2>Huginn: spend more loops at inference</h2><span class="sec-tag">Recurrent depth</span></div>
+        <div class="tldr-label">paper result</div>
+        <div class="tldr-body">
+          Huginn trains a recurrent-depth language model and evaluates it at larger recurrence counts during inference.
+        </div>
+        <p>
+          The model has a prelude, a shared recurrent block, and a coda. The recurrent block can be run multiple times before the final output. In the paper, harder reasoning tasks benefit from extra recurrence more than simpler knowledge tasks.
+        </p>
+        <p>
+          The reported run is a 3.5B parameter model trained on 800B tokens. The authors evaluate recurrence counts up to 64 and show gains on reasoning-heavy evaluations such as GSM8K-style tasks.
+        </p>
+        <div class="paper-note">
+          <h3>What the curve means</h3>
+          <p>A test-time compute curve usually rises quickly, then flattens. Early loops fix the obvious parts of the representation. Later loops help only if the task still has unresolved computation.</p>
+        </div>
+        <div class="storyboard">
+          <div class="story-step"><span class="n">01</span><div><b>Run the recurrent block again.</b><p>The model spends more compute before the coda and unembedding step.</p></div></div>
+          <div class="story-step"><span class="n">02</span><div><b>Measure whether the state is still changing.</b><p>Large changes suggest useful computation remains. Small changes suggest the representation has settled enough to decode.</p></div></div>
+          <div class="story-step"><span class="n">03</span><div><b>Decode after the chosen loop.</b><p>The output token comes from the final residual state, so the exit rule changes the amount of latent work behind that token.</p></div></div>
+        </div>
+      </section>
+
+      <section class="sec exit-scene" id="state-change-exit" data-exit-token="medium" data-exit-policy="kl">
+        <div class="sec-head"><span class="sec-num">02</span><h2>Zero-shot stopping with state change</h2></div>
+        <div class="tldr-label">Huginn exit</div>
+        <div class="tldr-body">A threshold on successive-state change can allocate recurrence without training a separate exit head.</div>
+        <p>
+          Huginn also explores adaptive exits without training a separate exit head. The idea is to compare successive recurrent states. If the state changes very little, the model can stop. The paper uses KL-style differences between steps for this kind of thresholding.
+        </p>
+        <p>
+          This is attractive because it does not require labels for “how many loops should this token get?” It uses the model's own convergence behavior as the signal.
+        </p>
+      </section>
+
+      <section class="sec exit-scene" id="ouro-ponder" data-exit-token="medium" data-exit-policy="ponder">
+        <div class="sec-head"><span class="sec-num">03</span><h2>Ouro: learn the exit</h2><span class="sec-tag gray">Ponder gate</span></div>
+        <div class="tldr-label">Ouro exit</div>
+        <div class="tldr-body">Ouro makes depth allocation part of training by predicting an exit probability at each recurrent step.</div>
+        <p>
+          Ouro makes the exit decision explicit. At each recurrent step, an exit gate predicts a probability of stopping. The language-modeling head also produces a loss at each step, so training can connect loop depth with prediction quality.
+        </p>
+        <p>
+          A learned gate can collapse if the objective is poorly shaped. It may stop too early, or it may always use the deepest step. Ouro uses an entropy-regularized objective with a prior over exit steps, then trains the gate with a specialized adaptive-exit loss.
+        </p>
+        <div class="evidence-grid">
+          <div class="evidence-card">
+            <b>Entropy regularization</b>
+            <p>Keeps the exit distribution from collapsing during pretraining.</p>
+          </div>
+          <div class="evidence-card">
+            <b>Adaptive exit training</b>
+            <p>Trains the gate to stop when another recurrent step is unlikely to pay off.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec exit-scene" id="task-appetite" data-exit-token="hard" data-exit-policy="ponder">
+        <div class="sec-head"><span class="sec-num">04</span><h2>Compute appetite differs by task</h2></div>
+        <div class="tldr-label">task behavior</div>
+        <div class="tldr-body">Reasoning-heavy tasks keep using recurrence longer. Knowledge-heavy tasks usually flatten earlier.</div>
+        <p>
+          A math problem and a fact recall question do not use recurrence the same way. In the papers, reasoning-heavy tasks tend to keep improving for more recurrence steps. Tasks that depend more on stored knowledge saturate earlier.
+        </p>
+        <p>
+          The useful deployment question is per input, not per benchmark: how many loops does this token need before the state is good enough to decode?
+        </p>
+        <div class="trace-table">
+          <div class="trace-card"><h3>Reasoning-heavy input</h3><p>The residual keeps changing for longer because the model is still composing intermediate quantities.</p></div>
+          <div class="trace-card"><h3>Knowledge-heavy input</h3><p>The relevant fact is usually present early. Later loops add little once the state points at the answer.</p></div>
+        </div>
+      </section>
+
+      <section class="sec exit-scene" id="cache-cost" data-exit-token="easy" data-exit-policy="ponder">
+        <div class="sec-head"><span class="sec-num">05</span><h2>Memory during decoding</h2></div>
+        <div class="tldr-label">deployment detail</div>
+        <div class="tldr-body">Adaptive compute has a KV-cache cost. Ouro tests cache reuse policies because loop depth changes decoding memory.</div>
+        <p>
+          Ouro also studies KV-cache sharing. A 4-step recurrent model can require separate caches for each recurrent step. During decoding, the paper finds that last-step cache reuse and averaged reuse preserve performance much better than first-step reuse.
+        </p>
+        <p>
+          This matters because adaptive compute only helps deployment if the memory story holds. Looping can save parameters, but repeated states still have runtime costs.
+        </p>
+      </section>
+
+      <section class="sec exit-scene" id="read-animation" data-exit-token="medium" data-exit-policy="kl">
+        <div class="sec-head"><span class="sec-num">06</span><h2>How to read the animation</h2></div>
+        <div class="tldr-label">animation</div>
+        <div class="tldr-body">The autoplay sweeps difficulty and alternates between a learned gate and a state-change threshold.</div>
+        <p>
+          The curve on the right is illustrative. It shows the shape that appears across the papers: more loops help, then returns flatten. The exact y-axis values are not copied from a benchmark table.
+        </p>
+        <ul class="check-list">
+          <li><b>KL threshold:</b> stop when state changes are small.</li>
+          <li><b>Ponder gate:</b> stop when a learned exit distribution crosses a threshold.</li>
+          <li><b>Harder input:</b> exit shifts right because the state needs more recurrent updates.</li>
+        </ul>
+      </section>
+    </main>
+
+    <aside class="depth-figure">
+      <div class="depth-figure__head"><span>Interactive</span><b>Loop allocator</b></div>
+      <div class="depth-viz exit-panel" id="exit-lab">
+        <div class="depth-controls intuition-lab__controls">
+          <div class="seg">
+            <button class="on" data-token="easy">Easy token</button>
+            <button data-token="medium">Medium token</button>
+            <button data-token="hard">Hard token</button>
+          </div>
+          <div class="seg">
+            <button class="on" data-policy="kl">KL threshold</button>
+            <button data-policy="ponder">Ponder gate</button>
+          </div>
+        </div>
+        <div class="intuition-lab__body">
+          <div class="intuition-viz"></div>
+          <div class="intuition-readout"></div>
+        </div>
+        <div class="intuition-note depth-note"></div>
+        <div class="depth-kv">
+          <b>Huginn</b><span>Use recurrence directly as test-time compute; threshold state changes for early stopping.</span>
+          <b>Ouro</b><span>Train a learned exit gate with entropy regularization and adaptive-exit supervision.</span>
+          <b>Scroll link</b><span>The pinned lab follows the section in view: Huginn sections use the KL threshold, Ouro sections use the learned gate.</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <script src="looped-depth.js?v=20260425f"></script>
+</body>
+</html>

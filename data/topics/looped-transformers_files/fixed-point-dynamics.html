@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fixed-point dynamics - Looped Transformers</title>
+  <link rel="stylesheet" href="style.css?v=20260425b">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span><span class="brand-title">Looped Transformers</span><span style="color:var(--ink-faint);margin-left:6px">· fixed-point dynamics</span></div>
+    <div class="meta"><a class="pill" href="index.html">Back to overview</a><span class="pill ver">mechanistic analysis</span></div>
+  </div>
+
+  <div class="depth-shell">
+    <main class="depth-main">
+      <div class="eyebrow"><span>Deep dive</span><span class="sep"></span><span>Blayney et al. 2025</span></div>
+      <h1 class="title">What the hidden state does when the block repeats</h1>
+      <p class="hero-deck">
+        The mechanistic paper looks inside looped reasoning models after the architecture is already trained.
+        It asks a direct question: as the same block runs again and again, do the internal states settle, cycle,
+        drift, or keep changing?
+      </p>
+      <div class="metric-strip">
+        <div class="metric"><div class="k">Object measured</div><div class="v">residual state</div><p>Same layer, same token, compared across recurrence steps.</p></div>
+        <div class="metric"><div class="k">Main pattern</div><div class="v">layer-wise endpoints</div><p>Several models settle to distinct fixed points inside the recurrent block.</p></div>
+        <div class="metric"><div class="k">Important exception</div><div class="v">Ouro 1.4B</div><p>It shows cyclic similarity while missing strict fixed-point convergence.</p></div>
+      </div>
+
+      <section class="sec fp-scene" data-fp-mode="fixed" data-fp-steps="8">
+        <div class="sec-head"><span class="sec-num">01</span><h2>The measurement</h2><span class="sec-tag gray">Setup</span></div>
+        <div class="tldr-label">paper setup</div>
+        <div class="tldr-body">
+          Take the residual stream after each layer in the recurrent block. Run many recurrences. Compare each layer's state with the same layer one loop later.
+        </div>
+        <p>
+          The paper studies cyclic recurrent blocks in models such as Huginn-0125, Ouro 1.4B, and retrofitted Llama-style models.
+          For each token, recurrence creates a realized depth: layer 1, layer 2, layer 3, layer 4, then layer 1 again on the next pass.
+        </p>
+        <p>
+          The useful comparison is layer-to-layer across cycles. If the output of layer 2 at recurrence 18 looks almost the same as
+          layer 2 at recurrence 19, layer 2 has essentially settled. If every layer settles to its own endpoint, the block as a whole
+          follows a repeated cycle through those layer endpoints.
+        </p>
+        <div class="storyboard">
+          <div class="story-step"><span class="n">01</span><div><b>Collect states by realized depth.</b><p>The same physical block appears many times in the unrolled computation. The paper indexes the residual state by recurrence and by layer inside the block.</p></div></div>
+          <div class="story-step"><span class="n">02</span><div><b>Compare a layer with itself one loop later.</b><p>The question is whether layer 3 at pass 20 has become close to layer 3 at pass 21. That avoids mixing together different layers in the cycle.</p></div></div>
+          <div class="story-step"><span class="n">03</span><div><b>Check the attention pattern too.</b><p>Converged residuals are stronger evidence when attention matrices also stop changing. The paper uses both views to separate stable recurrence from visual coincidence.</p></div></div>
+        </div>
+        <div class="intuition-lab" id="distance-lab">
+          <div class="intuition-lab__head"><b>Same-layer distance over recurrence</b><span>autoplaying lab</span></div>
+          <div class="intuition-lab__controls">
+            <div class="seg">
+              <button class="on" data-distance-mode="fixed">Fixed</button>
+              <button data-distance-mode="orbit">Orbit</button>
+              <button data-distance-mode="slider">Slider</button>
+              <button data-distance-mode="ouro">Ouro</button>
+            </div>
+          </div>
+          <div class="intuition-lab__body">
+            <div class="intuition-viz"></div>
+            <div class="intuition-readout"></div>
+          </div>
+          <div class="intuition-note"></div>
+        </div>
+        <div class="paper-note">
+          <h3>Why the word “cyclic” matters</h3>
+          <p>A recurrent block can reach a stable behavior without every intermediate layer becoming identical. Layer 1 can settle near one state, layer 2 near another, and so on. The sequence of layers still moves through a cycle.</p>
+          <p>That is the pattern the paper emphasizes: layer-specific fixed points inside a repeating block.</p>
+        </div>
+      </section>
+
+      <section class="sec fp-scene" data-fp-mode="fixed" data-fp-steps="24">
+        <div class="sec-head"><span class="sec-num">02</span><h2>Huginn settles quickly</h2><span class="sec-tag">Observed</span></div>
+        <div class="tldr-label">paper reading</div>
+        <div class="tldr-body">Huginn's residual states approach layer-specific references early enough that additional recurrence stays in-distribution.</div>
+        <p>
+          Huginn-0125 shows fast convergence in the fixed-point plots. After the early recurrences, the difference between a layer's current state and its late-recursion reference state becomes small. Attention patterns also stabilize.
+        </p>
+        <p>
+          This is a good fit for test-time recurrence. If the hidden state has a stable limiting behavior, running additional loops is less likely to push the model into a strange region of activation space. Extra recurrence can refine the same computation rather than sending the state somewhere unrelated.
+        </p>
+        <ul class="check-list">
+          <li><b>Residual states:</b> Huginn moves toward stable layer-wise references.</li>
+          <li><b>Attention:</b> attention matrices show the same recurring structure after the transient phase.</li>
+          <li><b>Test-time depth:</b> this helps explain why Huginn can run beyond the recurrence counts used during training.</li>
+        </ul>
+      </section>
+
+      <section class="sec fp-scene" data-fp-mode="ouro" data-fp-steps="28">
+        <div class="sec-head"><span class="sec-num">03</span><h2>Ouro is different</h2><span class="sec-tag gray">Important detail</span></div>
+        <div class="tldr-label">paper reading</div>
+        <div class="tldr-body">Ouro has recurrence structure, but the strict fixed-point claim does not fit the 1.4B model's long-recursion behavior.</div>
+        <p>
+          Ouro 1.4B does show cyclic similarity. The same layer across neighboring recurrences can look related. The fixed-point test is stricter, and Ouro does worse there: its states keep changing across long recurrences.
+        </p>
+        <p>
+          This distinction matters. A page that says “looped models converge to fixed points” is too broad. The paper's actual picture is more interesting: some models settle into fixed points, some have stable cycles or drifting behavior, and Ouro is one of the cases where strict fixed-point language is too strong.
+        </p>
+        <div class="evidence-grid">
+          <div class="evidence-card">
+            <b>Huginn / retrofitted Llama</b>
+            <p>Quick fixed-point convergence in the paper's residual-state tests.</p>
+          </div>
+          <div class="evidence-card">
+            <b>Ouro 1.4B</b>
+            <p>Cyclic similarity appears, while strict fixed-point convergence is absent in the long-recursion plots.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec fp-scene" data-fp-mode="orbit" data-fp-steps="28">
+        <div class="sec-head"><span class="sec-num">04</span><h2>Orbits and sliders</h2></div>
+        <div class="tldr-label">taxonomy</div>
+        <div class="tldr-body">The paper's categories give you three different stable-looking behaviors to check: fixed points, bounded orbits, and directional sliders.</div>
+        <p>
+          Geiping et al. had already observed latent orbits and sliders in Huginn. The mechanistic paper follows up on that behavior.
+          An orbit is a bounded repeated movement. A slider is a directional drift. Both can appear alongside fixed-point behavior in intermediate layers.
+        </p>
+        <p>
+          The practical reading is simple: stable looped inference does not always mean the hidden state freezes. Bounded repeated motion can also be stable. A drifting direction can also carry useful state, especially if the model uses it like a counter.
+        </p>
+      </section>
+
+      <section class="sec fp-scene" data-fp-mode="slider" data-fp-steps="26">
+        <div class="sec-head"><span class="sec-num">05</span><h2>Stages of inference</h2></div>
+        <div class="tldr-label">separate measurement</div>
+        <div class="tldr-body">Stage structure and fixed-point structure are related evidence, but the paper measures them separately.</div>
+        <p>
+          The paper also measures stage-like behavior across the repeated block. Ouro and retrofitted models show stages that resemble the usual feedforward pattern. Huginn is a negative case here: it does not show the same clean stage structure, likely due to how its normalization controls activation magnitude.
+        </p>
+        <p>
+          This gives a cleaner way to talk about the field. Fixed-point behavior and stage-of-inference behavior are related, but they are separate measurements. A model can show one pattern more clearly than the other.
+        </p>
+      </section>
+
+      <section class="sec fp-scene" data-fp-mode="fixed" data-fp-steps="32">
+        <div class="sec-head"><span class="sec-num">06</span><h2>How to use this idea</h2></div>
+        <div class="tldr-label">practical check</div>
+        <div class="tldr-body">Extra recurrence is safest when residual states, attention patterns, and performance all remain stable beyond the training range.</div>
+        <p>
+          When evaluating a looped model, ask three questions before trusting extra recurrence:
+        </p>
+        <ol>
+          <li>Do same-layer residual states approach stable references?</li>
+          <li>Do attention patterns stabilize across cycles?</li>
+          <li>Does performance hold when recurrence is pushed past the training range?</li>
+        </ol>
+        <p>
+          If all three hold, recurrence is behaving like a reliable compute budget. If one fails, the model may still work, but the explanation needs more care.
+        </p>
+      </section>
+    </main>
+
+    <aside class="depth-figure">
+      <div class="depth-figure__head"><span>Interactive</span><b>Latent trajectory types</b></div>
+      <div class="depth-viz" id="fixed-viz">
+        <div class="depth-controls">
+          <div class="seg">
+            <button class="on" data-mode="fixed">Fixed</button>
+            <button data-mode="orbit">Orbit</button>
+            <button data-mode="slider">Slider</button>
+            <button data-mode="ouro">Ouro 1.4B</button>
+          </div>
+          <span class="source-chip">R <span class="fp-step-readout">8</span></span>
+        </div>
+        <div class="viz-canvas"></div>
+        <div class="fp-stage-strip">
+          <span data-stage="measure">measure</span>
+          <span data-stage="settle">settle</span>
+          <span data-stage="exception">Ouro</span>
+          <span data-stage="orbit">orbit</span>
+          <span data-stage="slider">slider</span>
+          <span data-stage="use">use</span>
+        </div>
+        <div class="depth-note"></div>
+        <div class="depth-kv">
+          <b>Source</b><span>A Mechanistic Analysis of Looped Reasoning Language Models</span>
+          <b>Shown</b><span>Synthetic trajectories matching the categories discussed in the paper</span>
+          <b>Careful wording</b><span>Many studied models settle. Ouro 1.4B is a clear exception to strict fixed-point language.</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <script src="looped-depth.js?v=20260425c"></script>
+</body>
+</html>

@@ -9,5 +9,6 @@ src/paper_trail.egg-info/SOURCES.txt
 src/paper_trail.egg-info/dependency_links.txt
 src/paper_trail.egg-info/requires.txt
 src/paper_trail.egg-info/top_level.txt
+tests/test_ai.py
 tests/test_ingest.py
 tests/test_site.py

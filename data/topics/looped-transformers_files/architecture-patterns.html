@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture patterns - Looped Transformers</title>
+  <link rel="stylesheet" href="style.css?v=20260425c">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span><span class="brand-title">Looped Transformers</span><span style="color:var(--ink-faint);margin-left:6px">· architecture patterns</span></div>
+    <div class="meta"><a class="pill" href="index.html">Back to overview</a><span class="pill ver">Hyperloop + comparison</span></div>
+  </div>
+
+  <div class="depth-shell">
+    <main class="depth-main">
+      <div class="eyebrow"><span>Deep dive</span><span class="sep"></span><span>six architecture families</span></div>
+      <h1 class="title">The design choices behind looped transformers</h1>
+      <p class="hero-deck">
+        Most looped language models share the same broad structure: prepare the representation, run a repeated block, decode the result.
+        The differences matter: what is shared, where recurrence happens, how the model exits, and how stability or capacity is recovered.
+      </p>
+      <div class="metric-strip">
+        <div class="metric"><div class="k">Shared pattern</div><div class="v">prelude / loop / coda</div><p>Modern designs keep input handling and output decoding outside the repeated core.</p></div>
+        <div class="metric"><div class="k">Capacity move</div><div class="v">hyper-connections</div><p>Hyperloop expands what the repeated middle can carry between passes.</p></div>
+        <div class="metric"><div class="k">Depth move</div><div class="v">fixed, sampled, learned</div><p>R can be a constant, a training distribution, or a token-level exit decision.</p></div>
+      </div>
+
+      <section class="sec">
+        <div class="sec-head"><span class="sec-num">01</span><h2>The common skeleton</h2><span class="sec-tag gray">Pattern</span></div>
+        <div class="tldr-label">shared shape</div>
+        <div class="tldr-body">
+          A looped model usually has a front block, a repeated middle block, and an output block. The repeated block is where extra test-time compute enters.
+        </div>
+        <p>
+          Huginn makes this structure clear: prelude, recurrent block, coda. Hyperloop uses begin, middle, and end blocks. Parcae also fits this mental model through its input injection and stable recurrent block. Ouro is organized around repeated steps with a learned exit gate.
+        </p>
+        <p>
+          The shared middle block is the parameter-saving move. A model can run the same block several times, spending compute without storing a separate set of parameters for every realized layer.
+        </p>
+        <div class="storyboard">
+          <div class="story-step"><span class="n">front</span><div><b>Prepare the representation.</b><p>The first layers handle token-level features and put the prompt into the working residual space.</p></div></div>
+          <div class="story-step"><span class="n">loop</span><div><b>Spend repeated compute.</b><p>The middle block is reused, so realized depth grows faster than stored parameter count.</p></div></div>
+          <div class="story-step"><span class="n">exit</span><div><b>Decode from the final state.</b><p>The coda and unembedding see a residual state that has passed through the recurrent computation.</p></div></div>
+        </div>
+        <div class="paper-note">
+          <h3>Four things to track</h3>
+          <p>For each design, separate the stored parameters from the realized computation. Then look at the residual state that crosses loop boundaries, the rule that chooses R, and the mechanism that keeps the repeated map stable.</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-head"><span class="sec-num">02</span><h2>What gets shared</h2></div>
+        <div class="tldr-label">comparison</div>
+        <div class="tldr-body">The broad skeleton repeats across models. The important differences are the recurrence rule, exit rule, and stability mechanism.</div>
+        <table class="tbl">
+          <thead><tr><th>Model</th><th>Shared computation</th><th>Depth choice</th><th>Reason it matters</th></tr></thead>
+          <tbody>
+            <tr><td>Universal Transformer</td><td>Full block</td><td>ACT-style adaptive halting</td><td>Original transformer recurrence pattern over a shared state.</td></tr>
+            <tr><td>Recursive / recurrent-depth</td><td>Middle recurrent block</td><td>Fixed or sampled R</td><td>Modern prelude / loop / coda recipe; separates stored layers from realized depth.</td></tr>
+            <tr><td>Huginn</td><td>Middle recurrent block</td><td>Sampled during training, scalable at test time</td><td>Demonstrates latent test-time compute at 3.5B scale.</td></tr>
+            <tr><td>Ouro</td><td>Repeated LoopLM steps</td><td>Learned exit gate, up to 4 recurrent steps in main models</td><td>Connects loop depth with adaptive computation.</td></tr>
+            <tr><td>Parcae</td><td>Stable recurrent block</td><td>Variable recurrence with controlled training</td><td>Turns looping into a predictable scaling axis.</td></tr>
+            <tr><td>Hyperloop</td><td>Middle block with hyper-connections</td><td>Fixed middle-loop schedule in reported setup</td><td>Targets parameter efficiency and quantization-friendly deployment.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="sec">
+        <div class="sec-head"><span class="sec-num">03</span><h2>Hyperloop’s specific move</h2><span class="sec-tag">Hyper-connections</span></div>
+        <div class="tldr-label">Hyperloop</div>
+        <div class="tldr-body">Hyperloop keeps middle-block reuse and adds matrix-valued residual streams at loop boundaries to recover capacity.</div>
+        <p>
+          Plain looping saves parameters, but it also forces repeated computation through a narrow residual interface. Hyperloop adds hyper-connections after loop iterations. These create matrix-valued residual streams, giving the looped middle block more room to carry distinct state across repetitions.
+        </p>
+        <p>
+          The paper reports that Hyperloop outperforms depth-matched transformer and mHC baselines while using about 50% fewer parameters. It also studies INT4 post-training quantization, because parameter efficiency is less useful if the model becomes hard to deploy at low precision.
+        </p>
+        <div class="paper-note">
+          <h3>Where the parameter saving comes from</h3>
+          <p>The middle block is reused. The realized depth is larger than the stored depth. Hyper-connections add capacity at loop boundaries without replacing the parameter-sharing idea.</p>
+        </div>
+        <div class="trace-table">
+          <div class="trace-card"><h3>Vanilla loop</h3><p>Each pass writes back into the same residual stream. This is parameter-efficient, but repeated state can become cramped.</p></div>
+          <div class="trace-card"><h3>Hyperloop</h3><p>Hyper-connections mix multiple residual streams after loop iterations, giving the repeated middle a wider state interface.</p></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-head"><span class="sec-num">04</span><h2>Parcae solves a different problem</h2></div>
+        <div class="tldr-label">Parcae</div>
+        <div class="tldr-body">Parcae is mainly about training dynamics: keep recurrence stable so loops can scale predictably.</div>
+        <p>
+          Hyperloop focuses on parameter-efficient architecture. Parcae focuses on stable training. Its negative diagonal parameterization and per-sequence sampling are there to prevent the loop from learning unstable recurrence dynamics.
+        </p>
+        <p>
+          These ideas can be complementary. A practical looped model needs both enough capacity inside the repeated computation and stable dynamics across recurrence.
+        </p>
+      </section>
+
+      <section class="sec">
+        <div class="sec-head"><span class="sec-num">05</span><h2>Ouro changes the depth decision</h2></div>
+        <div class="tldr-label">Ouro</div>
+        <div class="tldr-body">Ouro moves recurrence depth from a global setting into a learned per-token exit distribution.</div>
+        <p>
+          Ouro's main architectural addition is the exit gate. Rather than choosing one fixed recurrence count for every token, the model can assign a probability of exiting at each loop step.
+        </p>
+        <p>
+          That makes the loop budget a learned decision. The architecture and objective are tied together: a language modeling loss at each step, an exit probability at each step, and an entropy-regularized objective to keep the exit distribution usable during training.
+        </p>
+      </section>
+
+      <section class="sec">
+        <div class="sec-head"><span class="sec-num">06</span><h2>A practical design checklist</h2></div>
+        <div class="tldr-label">design review</div>
+        <div class="tldr-body">A looped design should be judged by recurrence placement, input preservation, state capacity, depth choice, and stability control.</div>
+        <ul class="check-list">
+          <li><b>Where is recurrence placed?</b> Full stack, middle block, or a specialized stable block.</li>
+          <li><b>How is the input preserved?</b> Input injection and normalization choices decide whether the prompt remains available across loops.</li>
+          <li><b>How is capacity preserved?</b> Hyper-connections, larger recurrent blocks, or learned exits can all change what the loop can carry.</li>
+          <li><b>How is depth selected?</b> Fixed R is simple. Sampled R trains scalability. Learned exits make compute adaptive.</li>
+          <li><b>How is instability controlled?</b> Spectral constraints and recurrence-aware training matter once loop depth grows.</li>
+        </ul>
+      </section>
+    </main>
+
+    <aside class="depth-figure">
+      <div class="depth-figure__head"><span>Interactive</span><b>Architecture comparator</b></div>
+      <div class="depth-viz" id="arch-viz">
+        <div class="depth-controls">
+          <div class="arch-tabs">
+            <button class="btn" data-arch="universal">Universal</button>
+            <button class="btn" data-arch="recursive">Recursive</button>
+            <button class="btn" data-arch="huginn">Huginn</button>
+            <button class="btn" data-arch="ouro">Ouro</button>
+            <button class="btn" data-arch="parcae">Parcae</button>
+            <button class="btn on" data-arch="hyperloop">Hyperloop</button>
+          </div>
+        </div>
+        <div class="viz-canvas"></div>
+        <div class="depth-note"><b>Comparator</b>Each tab highlights the mechanism that distinguishes the paper from the others.</div>
+        <div class="depth-kv">
+          <b>Universal</b><span>Full-block recurrence with adaptive halting.</span>
+          <b>Recursive</b><span>Prelude, recurrent middle, and coda.</span>
+          <b>Hyperloop</b><span>Middle block reuse plus hyper-connections at loop boundaries.</span>
+          <b>Parcae</b><span>Stable recurrent dynamics through constrained injection parameters.</span>
+          <b>Ouro</b><span>Repeated computation with a learned exit distribution.</span>
+          <b>Huginn</b><span>Recurrent depth as a direct test-time compute axis.</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <script src="looped-depth.js?v=20260425e"></script>
+</body>
+</html>
