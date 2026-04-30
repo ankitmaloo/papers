@@ -146,6 +146,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px;margin:18px 0}
 .figure-spacer{flex:1}
 .figure-controls{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-muted)}
 .figure-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.fig-fill{display:flex;flex-direction:column;height:100%;min-height:0}
+.fig-fill__main{flex:1;display:grid;gap:16px;min-height:0}
 .figure-caption{margin-top:12px;font-size:12px;line-height:1.5;color:var(--ink-muted);max-width:540px}
 .figure-caption b{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;display:block;margin-bottom:3px}
 .figure-progress{position:absolute;top:0;right:0;left:0;height:2px;background:var(--rule)}

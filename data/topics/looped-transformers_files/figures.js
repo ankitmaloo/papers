@@ -1,25 +1,27 @@
 // Fig 1: Computation graph FF vs Looped
 function initFig1(el) {
-  const W=480,H=300,LC=12;
+  const W=560,H=320,LC=12;
   let mode='loop',t=0,playing=true,raf;
-  const ly=i=>24+(256/(LC-1))*i;
+  const ly=i=>30+(260/(LC-1))*i;
   const residSeed=(i,l)=>Math.sin(i*1.7+l*0.6)*0.5+Math.sin(i*0.5+l*1.3)*0.4;
 
-  el.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-    <div class="seg"><button data-m="ff">Feedforward</button><button class="on" data-m="loop">Looped</button></div>
-    <button class="btn" id="f1play">Pause</button>
-    <input type="range" min="0" max="1000" value="0" style="flex:1" id="f1rng">
-    <span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)" id="f1dep">depth 0.0</span>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 160px;gap:12px">
-    <svg id="f1svg" viewBox="0 0 ${W} ${H}" style="width:100%"></svg>
-    <div id="f1bars" style="border-left:1px solid var(--rule);padding-left:8px">
-      <div style="font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">residual stream · 24d</div>
-      <div id="f1bg" style="display:grid;grid-template-columns:repeat(6,1fr);gap:2px;height:200px"></div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--ink-faint);margin-top:4px" id="f1info"></div>
+  el.innerHTML=`<div class="fig-fill">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+      <div class="seg"><button data-m="ff">Feedforward</button><button class="on" data-m="loop">Looped</button></div>
+      <button class="btn" id="f1play">Pause</button>
+      <input class="range" type="range" min="0" max="1000" value="0" style="flex:1" id="f1rng">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--ink-muted);min-width:60px;text-align:right" id="f1dep">depth 0.0</span>
     </div>
-  </div>
-  <div class="figure-caption"><b>Figure 1 · Computation graph</b> Feedforward applies <i>K</i> distinct blocks once. Looped re-applies a shared block <i>R</i> times.</div>`;
+    <div class="fig-fill__main" style="grid-template-columns:1fr 200px">
+      <svg id="f1svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg>
+      <div id="f1bars" style="display:flex;flex-direction:column;gap:6px;padding-left:8px;border-left:1px solid var(--rule);min-height:0">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase">residual stream · 24d</div>
+        <div id="f1bg" style="display:grid;grid-template-columns:repeat(6,1fr);gap:3px;flex:1;min-height:0"></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint)" id="f1info"></div>
+      </div>
+    </div>
+    <div class="figure-caption"><b>Figure 1 · Computation graph</b> Feedforward applies <i>K</i> distinct blocks once. Looped applies a single shared block <i>R</i> times - same parameters, more compute, the residual stream re-enters the same weights. Watch the loop arc and the bar pattern: the same dimensions get re-stirred, not replaced.</div>
+  </div>`;
 
   const svg=document.getElementById('f1svg'),bars=document.getElementById('f1bg');
   el.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
@@ -39,16 +41,16 @@ function initFig1(el) {
     for(let i=0;i<LC;i++){
       const y=ly(i),inL=mode==='loop'&&i>=loopS&&i<=loopE;
       const active=mode==='loop'?(inL?(Math.floor(t*12)%4)===(i-loopS):Math.abs(i-depth)<.6):Math.abs(i-depth)<.6;
-      s+=`<rect x="${W/2-70}" y="${y-7}" width="140" height="14" rx="3" fill="${inL?'var(--accent-soft)':'var(--paper)'}" stroke="${active?'var(--accent)':(inL?'var(--accent-line)':'var(--rule-strong)')}" stroke-width="${active?1.4:1}"/>`;
-      s+=`<text x="${W/2-60}" y="${y+3}" font-family="var(--mono)" font-size="9" fill="var(--ink-soft)">L${i}${inL?' · loop block':''}</text>`;
-      s+=`<text x="${W/2+60}" y="${y+3}" text-anchor="end" font-family="var(--mono)" font-size="8" fill="var(--ink-faint)">${mode==='loop'?(inL?'shared':'unique'):'unique'}</text>`;
-      if(i<LC-1)s+=`<line x1="${W/2}" y1="${y+7}" x2="${W/2}" y2="${ly(i+1)-7}" stroke="var(--rule-strong)"/>`;
+      s+=`<rect x="${W/2-80}" y="${y-8}" width="160" height="16" rx="3" fill="${inL?'var(--accent-soft)':'var(--paper)'}" stroke="${active?'var(--accent)':(inL?'var(--accent-line)':'var(--rule-strong)')}" stroke-width="${active?1.4:1}"/>`;
+      s+=`<text x="${W/2-70}" y="${y+3.5}" font-family="var(--mono)" font-size="10" fill="var(--ink-soft)">L${i}${inL?' · loop block':''}</text>`;
+      s+=`<text x="${W/2+70}" y="${y+3.5}" text-anchor="end" font-family="var(--mono)" font-size="9.5" fill="var(--ink-faint)">${mode==='loop'?(inL?'shared':'unique'):'unique'}</text>`;
+      if(i<LC-1)s+=`<line x1="${W/2}" y1="${y+8}" x2="${W/2}" y2="${ly(i+1)-8}" stroke="var(--rule-strong)"/>`;
     }
     if(mode==='loop'){
-      s+=`<path d="M ${W/2+70} ${ly(loopE)} C ${W/2+140} ${ly(loopE)}, ${W/2+140} ${ly(loopS)}, ${W/2+70} ${ly(loopS)}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="${li>=loopS&&li<loopE?'0':'3 3'}"/>`;
-      s+=`<text x="${W/2+148}" y="${(ly(loopS)+ly(loopE))/2+3}" font-family="var(--mono)" font-size="9" fill="var(--accent)">× R = ${loopIter+1}/3</text>`;
+      s+=`<path d="M ${W/2+80} ${ly(loopE)} C ${W/2+160} ${ly(loopE)}, ${W/2+160} ${ly(loopS)}, ${W/2+80} ${ly(loopS)}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="${li>=loopS&&li<loopE?'0':'3 3'}"/>`;
+      s+=`<text x="${W/2+168}" y="${(ly(loopS)+ly(loopE))/2+3}" font-family="var(--mono)" font-size="10" fill="var(--accent)" letter-spacing=".04em">× R = ${loopIter+1}/3</text>`;
     }
-    s+=`<circle cx="${W/2-90}" cy="${tokY}" r="4" fill="var(--accent)"/><circle cx="${W/2-90}" cy="${tokY}" r="7" fill="none" stroke="var(--accent)" stroke-opacity=".3"/>`;
+    s+=`<circle cx="${W/2-110}" cy="${tokY}" r="4" fill="var(--accent)"/><circle cx="${W/2-110}" cy="${tokY}" r="8" fill="none" stroke="var(--accent)" stroke-opacity=".3"/><text x="${W/2-122}" y="${tokY+3}" text-anchor="end" font-family="var(--mono)" font-size="10" fill="var(--ink-soft)">x</text>`;
     svg.innerHTML=s;
 
     // Residual bars
@@ -68,13 +70,17 @@ function initFig2(el) {
   const traj=(()=>{const tgt=[[-6,4],[4,5],[6,-4],[-4,-5]];return tgt.map((t,l)=>{let p=[Math.cos(l*1.7)*9,Math.sin(l*1.7)*9];const path=[];for(let i=0;i<32;i++){const k=.18+l*.02,n=.6*Math.exp(-i*.25);p=[p[0]+(t[0]-p[0])*k+Math.sin(i*(1.3+l))*n,p[1]+(t[1]-p[1])*k+Math.cos(i*(1.7+l*.5))*n];path.push([...p]);}return{path,target:t,color:['var(--accent)','var(--teal)','var(--ink-soft)','var(--ink-muted)'][l]};});})();
   const ttc=[{name:'GSM8K',a:51,k:.085,b:8,c:'var(--accent)'},{name:'ARC-C',a:44,k:.18,b:22,c:'var(--teal)'},{name:'OBQA',a:41,k:.32,b:28,c:'var(--ink-soft)'}].map(t=>({...t,pts:Array.from({length:32},(_,i)=>[i+1,t.b+(t.a-t.b)*(1-Math.exp(-t.k*(i+1)))])}));
 
-  el.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-    <div class="seg"><button class="on" data-s="pca">Latent PCA</button><button data-s="ttc">Test-time compute</button></div>
-    <span style="flex:1"></span><button class="btn on" id="f2auto">Pause</button><span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)" id="f2r">R = 8</span>
-  </div>
-  <input type="range" min="1" max="32" value="8" style="width:100%;margin-bottom:10px" id="f2rng">
-  <svg id="f2svg" viewBox="0 0 500 340" style="width:100%"></svg>
-  <div class="figure-caption"><b>Figure 2 · <span id="f2cap">Cyclic fixed points</span></b> <span id="f2desc">Each line is one layer. As R grows, layers converge to distinct fixed points.</span></div>`;
+  el.innerHTML=`<div class="fig-fill">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+      <div class="seg"><button class="on" data-s="pca">Latent PCA</button><button data-s="ttc">Test-time compute</button></div>
+      <span style="flex:1"></span><button class="btn on" id="f2auto">Pause</button><span style="font-family:var(--mono);font-size:11px;color:var(--ink-muted)" id="f2r">R = 8</span>
+    </div>
+    <input class="range" type="range" min="1" max="32" value="8" style="margin-bottom:14px" id="f2rng">
+    <div style="flex:1;min-height:0">
+      <svg id="f2svg" viewBox="0 0 540 380" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg>
+    </div>
+    <div class="figure-caption"><b>Figure 2 · <span id="f2cap">Cyclic fixed points</span></b> <span id="f2desc">Each line is one layer. As R grows, layers converge to distinct fixed points.</span></div>
+  </div>`;
 
   el.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{show=b.dataset.s;el.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x===b));draw();}));
   document.getElementById('f2rng').addEventListener('input',function(){setAuto(false);r=+this.value;document.getElementById('f2r').textContent=`R = ${r}`;draw();});
@@ -99,7 +105,7 @@ function initFig2(el) {
   function draw(){
     const svg=document.getElementById('f2svg');
     if(show==='pca'){
-      const W=500,H=340,cx=W/2,cy=H/2,sc=16;
+      const W=540,H=380,cx=W/2,cy=H/2,sc=16;
       let s=`<line x1="20" y1="${cy}" x2="${W-20}" y2="${cy}" stroke="var(--rule)" stroke-dasharray="2 3"/><line x1="${cx}" y1="20" x2="${cx}" y2="${H-20}" stroke="var(--rule)" stroke-dasharray="2 3"/>`;
       s+=`<text x="${W-22}" y="${cy-6}" text-anchor="end" font-family="var(--mono)" font-size="9" fill="var(--ink-faint)">PC 1</text>`;
       s+=`<text x="${cx+6}" y="24" font-family="var(--mono)" font-size="9" fill="var(--ink-faint)">PC 2</text>`;
@@ -115,7 +121,7 @@ function initFig2(el) {
       document.getElementById('f2cap').textContent='Cyclic fixed points';
       document.getElementById('f2desc').textContent='Each line is one layer. As R grows, layers converge to distinct fixed points.';
     } else {
-      const W=500,H=340,m={l:36,r:14,t:14,b:32},xM=32,yM=60;
+      const W=540,H=380,m={l:36,r:14,t:14,b:32},xM=32,yM=60;
       const x=v=>m.l+(v/xM)*(W-m.l-m.r),y=v=>H-m.b-(v/yM)*(H-m.t-m.b);
       let s='';
       [0,15,30,45,60].forEach(v=>{s+=`<line x1="${m.l}" y1="${y(v)}" x2="${W-m.r}" y2="${y(v)}" stroke="var(--rule)"/><text x="${m.l-6}" y="${y(v)+3}" text-anchor="end" font-family="var(--mono)" font-size="8" fill="var(--ink-faint)">${v}</text>`;});
@@ -149,28 +155,70 @@ function initFig3(el) {
   ];
   let sel='recursive',playing=true,autoTimer=null,autoIdx=1;
 
+  function archDiagram(a){
+    const profiles={
+      universal:{p:0,c:0,r:'ACT'},
+      recursive:{p:2,c:2,r:'1..64'},
+      huginn:{p:2,c:2,r:'1..32'},
+      ouro:{p:1,c:1,r:'learned'},
+      parcae:{p:2,c:2,r:'1..16'},
+      hyperloop:{p:2,c:2,r:'3'}
+    };
+    const cfg=profiles[a.id]||profiles.recursive;
+    const W=180;
+    const blocks=[];
+    let y=24;
+    const add=(label,kind)=>{blocks.push({y,label,kind});y+=kind==='loop'?54:22;};
+    for(let i=0;i<cfg.p;i++)add(`prelude L${i+1}`,'pre');
+    add(`recurrent block (x${cfg.r})`,'loop');
+    for(let i=0;i<cfg.c;i++)add(`coda L${i+1}`,'post');
+    const H=y+18;
+    const parts=blocks.map((b,i)=>{
+      const isLoop=b.kind==='loop';
+      const h=isLoop?44:14;
+      const next=blocks[i+1];
+      return `<g>
+        <rect x="20" y="${b.y}" width="${W-40}" height="${h}" rx="3" fill="${isLoop?'var(--accent-soft)':'var(--paper)'}" stroke="${isLoop?'var(--accent-line)':'var(--rule-strong)'}"></rect>
+        <text x="${W/2}" y="${b.y+(isLoop?18:9.5)}" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="${isLoop?'var(--accent)':'var(--ink-soft)'}">${b.label}</text>
+        ${isLoop?`<text x="${W/2}" y="${b.y+32}" text-anchor="middle" font-family="var(--mono)" font-size="8.5" fill="var(--ink-muted)">shared params</text>
+        <path d="M ${W-22} ${b.y+12} C ${W+8} ${b.y+20}, ${W+8} ${b.y+34}, ${W-22} ${b.y+42}" fill="none" stroke="var(--accent)" stroke-dasharray="2 2"></path>`:''}
+        ${next?`<line x1="${W/2}" y1="${b.y+h}" x2="${W/2}" y2="${next.y}" stroke="var(--ink-faint)"></line><path d="M ${W/2-3} ${next.y-5} L ${W/2} ${next.y} L ${W/2+3} ${next.y-5}" fill="none" stroke="var(--ink-faint)"></path>`:''}
+      </g>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;max-height:300px">
+      <text x="${W/2}" y="12" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink-faint)" letter-spacing=".06em">EMBED</text>
+      ${parts}
+      <text x="${W/2}" y="${H-4}" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink-faint)" letter-spacing=".06em">UNEMBED</text>
+    </svg>`;
+  }
+
   function render(){
     const a=ARCHS.find(x=>x.id===sel);
-    el.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <button class="btn${playing?' on':''}" id="f3auto">${playing?'Pause':'Auto-play'}</button>
-      <span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)">cycle through architectures</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px">
-      ${ARCHS.map(x=>`<button class="btn${sel===x.id?' on':''}" data-a="${x.id}" style="text-align:left;padding:6px 8px;text-transform:none;letter-spacing:0;line-height:1.3;font-size:11px;position:relative">
-        <span style="font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.04em">${x.year}</span><br>
-        <span style="font-weight:500">${x.name}</span>
-        ${x.nw?'<span style="position:absolute;top:4px;right:4px;font-family:var(--mono);font-size:8px;color:var(--accent);border:1px solid var(--accent-line);background:var(--accent-soft);padding:1px 4px;border-radius:3px">NEW</span>':''}
-      </button>`).join('')}
-    </div>
-    <div style="border:1px solid var(--rule);border-radius:var(--radius);background:var(--paper);padding:14px">
-      <div style="font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase">${a.year} · ${a.who}</div>
-      <h3 style="margin:4px 0 8px;font-size:16px">${a.name}</h3>
-      <p style="font-size:13px;color:var(--ink-soft);margin:0 0 12px">${a.short}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-family:var(--mono);font-size:11px">
-        ${Object.entries(a.traits).map(([k,v])=>`<b style="color:var(--ink-faint);font-weight:400;font-size:10px;text-transform:uppercase;letter-spacing:.04em">${k}</b><span style="color:var(--ink)">${v}</span>`).join('')}
+    el.innerHTML=`<div class="fig-fill">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <button class="btn${playing?' on':''}" id="f3auto">${playing?'Pause':'Auto-play'}</button>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--ink-muted)">cycle through architectures</span>
       </div>
-    </div>
-    <div class="figure-caption"><b>Figure 3 · Architecture zoo</b> Six looped designs. They differ in what is shared, how R is chosen, and how stability is achieved.</div>`;
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
+        ${ARCHS.map(x=>`<button class="btn${sel===x.id?' on':''}" data-a="${x.id}" style="text-align:left;padding:8px 10px;text-transform:none;letter-spacing:0;line-height:1.3;font-size:11.5px;position:relative">
+          <span style="font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:.04em">${x.year}</span><br>
+          <span style="font-weight:500">${x.name}</span>
+          ${x.nw?'<span style="position:absolute;top:6px;right:6px;font-family:var(--mono);font-size:8.5px;color:var(--accent);border:1px solid var(--accent-line);background:var(--accent-soft);padding:1px 4px;border-radius:3px">NEW</span>':''}
+        </button>`).join('')}
+      </div>
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:200px 1fr;gap:16px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--paper);padding:16px">
+        <div style="min-height:0;display:flex;align-items:center">${archDiagram(a)}</div>
+        <div style="min-width:0">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase">${a.year} · ${a.who}</div>
+          <h3 style="margin:4px 0 8px;font-size:18px">${a.name}</h3>
+          <p style="font-size:13.5px;line-height:1.5;color:var(--ink-soft);margin:0">${a.short}</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-family:var(--mono);font-size:11px;margin-top:14px">
+            ${Object.entries(a.traits).map(([k,v])=>`<b style="color:var(--ink-faint);font-weight:400;font-size:10px;text-transform:uppercase;letter-spacing:.04em">${k}</b><span style="color:var(--ink)">${v}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="figure-caption"><b>Figure 3 · Architecture zoo</b> Six looped designs. They differ in what is shared, how R is chosen, and how stability is achieved.</div>
+    </div>`;
     document.getElementById('f3auto').addEventListener('click',()=>setAuto(!playing));
     el.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{setAuto(false);sel=b.dataset.a;autoIdx=ARCHS.findIndex(x=>x.id===sel);render();}));
   }
