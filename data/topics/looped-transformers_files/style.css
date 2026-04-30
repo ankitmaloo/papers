@@ -31,7 +31,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font
 a{color:inherit}button{font-family:inherit;cursor:pointer}
 
 /* ── Top bar ─── */
-.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;padding:12px 28px;background:rgba(253,252,250,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule);font-size:13px}
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;padding:12px 28px;background:oklch(99% 0.003 245 / 0.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule);font-size:13px}
 .brand{display:flex;align-items:baseline;gap:10px;font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:.02em}
 .brand-title{font-family:var(--sans);font-weight:600;font-size:14px;color:var(--ink);letter-spacing:-.01em}
 .brand-mark{display:inline-block;width:14px;height:14px;border:1.5px solid var(--ink);border-radius:50%;position:relative;transform:translateY(2px)}
@@ -138,17 +138,17 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px;margin:18px 0}
 /* Figure pane */
 .figure-pane{border-left:1px solid var(--rule);position:sticky;top:49px;height:calc(100vh - 49px);overflow:hidden;display:flex;flex-direction:column;background:var(--bg)}
 .figure-frame{flex:1;position:relative;overflow:hidden}
-.figure-slot{position:absolute;inset:0;padding:28px 30px;display:flex;flex-direction:column;opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease;pointer-events:none}
+.figure-slot{position:absolute;inset:0;padding:28px 36px;display:flex;flex-direction:column;opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease;pointer-events:none}
 .figure-slot.active{opacity:1;transform:translateY(0);pointer-events:auto}
 .figure-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--rule)}
 .figure-num{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase}
 .figure-title{font-size:14px;font-weight:500;color:var(--ink);letter-spacing:-.005em}
 .figure-spacer{flex:1}
-.figure-controls{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-muted)}
+.figure-controls{display:flex;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-muted)}
 .figure-body{flex:1;min-height:0;display:flex;flex-direction:column}
 .fig-fill{display:flex;flex-direction:column;height:100%;min-height:0}
 .fig-fill__main{flex:1;display:grid;gap:16px;min-height:0}
-.figure-caption{margin-top:12px;font-size:12px;line-height:1.5;color:var(--ink-muted);max-width:540px}
+.figure-caption{margin-top:12px;font-size:12px;line-height:1.5;color:var(--ink-muted);font-family:var(--sans);max-width:540px;text-wrap:pretty}
 .figure-caption b{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;display:block;margin-bottom:3px}
 .figure-progress{position:absolute;top:0;right:0;left:0;height:2px;background:var(--rule)}
 .figure-progress>span{display:block;height:100%;width:0;background:var(--accent);transition:width .35s ease}
@@ -331,7 +331,9 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px;margin:18px 0}
 .seg button:hover:not(.on){background:var(--bg-tint)}
 
 /* Range */
-input.range,input[type="range"]{width:100%;accent-color:var(--accent)}
+.range{-webkit-appearance:none;appearance:none;height:2px;background:var(--rule-strong);border-radius:1px;outline:none;cursor:pointer;width:100%}
+.range::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--paper);box-shadow:0 0 0 1px var(--accent-line);cursor:pointer}
+.range::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--paper);cursor:pointer}
 
 /* Step caption */
 .step-caption{margin-top:10px;padding:10px 12px;background:var(--bg-tint);border:1px solid var(--rule);border-radius:6px;font-size:12.5px;color:var(--ink-soft);line-height:1.5}
